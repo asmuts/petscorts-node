@@ -1,13 +1,13 @@
-let server;
+let app;
 const request = require("supertest");
 const Owner = require("../../../services/models/owner");
 
 describe("/api/v1/owners", () => {
   beforeEach(() => {
-    server = require("../../../index");
+    // need to run the server on a different port than nodemon
+    app = require("../../../index");
   });
   afterEach(async () => {
-    server.close();
     await Owner.remove({});
   });
 
@@ -18,8 +18,7 @@ describe("/api/v1/owners", () => {
         { username: "owner2", fullname: "name 2", email: "owner2@own.com" },
       ]);
 
-      const res = await request(server).get("/api/v1/owners");
-      //console.log(res.body);
+      const res = await request(app).get("/api/v1/owners");
 
       expect(res.status).toBe(200);
       expect(res.body.length).toBe(2);
@@ -37,7 +36,7 @@ describe("/api/v1/owners", () => {
       });
       await newOwner.save();
 
-      const res = await request(server).get(`/api/v1/owners/${newOwner._id}`);
+      const res = await request(app).get(`/api/v1/owners/${newOwner._id}`);
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty("fullname", newOwner.fullname);
@@ -45,7 +44,7 @@ describe("/api/v1/owners", () => {
     });
 
     it("should return 404 if invalid id is passed", async () => {
-      const res = await request(server).get("/api/v1/owners/1");
+      const res = await request(app).get("/api/v1/owners/1");
 
       expect(res.status).toBe(404);
     });

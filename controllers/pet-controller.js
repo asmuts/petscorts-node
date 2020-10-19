@@ -19,6 +19,15 @@ exports.getPetById = async function (req, res) {
 };
 
 exports.addPet = async function (req, res) {
+  return await updateOrAddPet(req, res);
+};
+
+// Note: Might want to seperate the owner update.
+exports.updatePet = async function (req, res) {
+  return await updateOrAddPet(req, res);
+};
+
+async function updateOrAddPet(req, res) {
   const petData = getPetDataFromRequest(req);
   const { error } = petService.validatePet(petData);
   if (error)
@@ -32,16 +41,32 @@ exports.addPet = async function (req, res) {
   }
   petData.ownerName = owner.fullname;
 
+  if (petData.petId) {
+    const result = await petService.updatePet(petData);
+    res.json(result);
+  } else {
+    return await addPetAndAssociateOwner(res, petData);
+  }
+}
+
+async function addPetAndAssociateOwner(res, petData) {
   const newPetId = await petService.addPet(petData);
   winston.debug(`Added new pet: ${newPetId}`);
 
-  ownerService.addPetToOwner(ownerId, newPetId);
-
+  await ownerService.addPetToOwner(petData.ownerId, newPetId);
   res.json({ petId: newPetId });
+}
+
+exports.deletePet = async function (req, res) {
+  const petData = getPetDataFromRequest(req);
+  const pet = await petService.deleteOwner(petData.ownerId);
+  if (!pet) return returnNotFoundError(res, petData.ownerId);
+
+  res.json(pet);
 };
 
 function getPetDataFromRequest(req) {
-  return {
+  let pet = {
     name: req.body.name,
     city: req.body.city,
     street: req.body.street,
@@ -51,4 +76,9 @@ function getPetDataFromRequest(req) {
     dailyRentalRate: req.body.dailyRentalRate,
     ownerId: req.body.ownerId,
   };
+
+  if (req.params.id) {
+    pet.petId = req.params.id;
+  }
+  return pet;
 }

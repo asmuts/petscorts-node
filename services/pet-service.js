@@ -40,8 +40,37 @@ exports.addImageToPet = async function (petId, imageUrl) {
   pet.save();
 };
 
+exports.updatePet = async function (petData) {
+  let pet = {
+    name: petData.name,
+    city: petData.city,
+    street: petData.street,
+    species: petData.species,
+    breed: petData.breed,
+    description: petData.description,
+    dailyRentalRate: petData.dailyRentalRate,
+    owner: {
+      _id: petData.ownerId,
+      fullname: petData.ownerName,
+    },
+  };
+  const result = await Pet.findByIdAndUpdate(petData.petId, pet, {
+    new: true,
+  }).exec();
+  winston.debug("Updated Pet " + result);
+  return result;
+};
+
+exports.deletePet = async function (renterId) {
+  winston.info(`Deleting Pet - id: ${renterId}`);
+  const pet = await Pet.findByIdAndRemove(renterId);
+  return pet;
+};
+
 exports.validatePet = function (pet) {
+  // the petId is not stored in mongo
   const schema = Joi.object({
+    petId: Joi.string().optional(),
     name: Joi.string().required().min(3),
     city: Joi.string().required().min(3),
     street: Joi.string().required().min(3),

@@ -18,9 +18,8 @@ if (app.get("env") === "development" || "dev") {
   winston.info("Morgan enabled");
 }
 
-const port = process.env.PORT || 3001;
-const server = app.listen(port, () =>
-  winston.info(`Listening on port ${port}`)
-);
+// Note. Don't start the server here.
+// Supertest will load the app and start its own server.
+// Normal startup should use server.js
 
-module.exports = server;
+module.exports = app;

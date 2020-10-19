@@ -3,8 +3,9 @@ const winston = require("winston");
 const Owner = require("./models/owner");
 const mongoose = require("mongoose");
 
+// For testing. Limit the max results for safety.
 exports.getAllOwnwers = async function () {
-  const owners = await Owner.find().exec();
+  const owners = await Owner.find().limit(200).exec();
   winston.debug(`Found ${owners.length} owners.`);
   return owners;
 };
@@ -71,6 +72,7 @@ exports.deleteOwner = async function (ownerId) {
 
 exports.validateOwner = function (owner) {
   const schema = Joi.object({
+    ownerId: Joi.string().optional(),
     username: Joi.string().required().min(5),
     fullname: Joi.string().required().min(5),
     email: Joi.string().email().required(),
@@ -78,7 +80,7 @@ exports.validateOwner = function (owner) {
   return schema.validate(owner);
 };
 
-// TODO - I can do this in middleware if ids will always be mongo style.
+// This is now done in middleware.
 exports.validateID = function (id) {
   return mongoose.Types.ObjectId.isValid(id);
 };

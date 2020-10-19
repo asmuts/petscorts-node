@@ -1,4 +1,4 @@
-const error_mw = require("../middleware/error-mw");
+const error_mw = require("../routes/middleware/error-mw");
 const express = require("express");
 
 const home = require("../routes/home");

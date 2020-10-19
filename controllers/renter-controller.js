@@ -66,10 +66,14 @@ exports.deleteRenter = async function (req, res) {
 };
 
 function getRenterDataFromRequest(req) {
-  return {
-    renterId: req.params.renterId,
+  let renter = {
     username: req.body.username,
     fullname: req.body.fullname,
     email: req.body.email,
   };
+
+  if (req.params.id) {
+    renter.renterId = req.params.id;
+  }
+  return renter;
 }

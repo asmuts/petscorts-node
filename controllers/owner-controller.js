@@ -1,4 +1,5 @@
 const winston = require("winston");
+const owner = require("../services/models/owner");
 const ownerService = require("../services/owner-service");
 const errorUtil = require("./util/error-util");
 
@@ -9,9 +10,6 @@ exports.getAllOwners = async function (req, res) {
 
 exports.getOwnerById = async function (req, res) {
   const ownerData = getOwnerDataFromRequest(req);
-  const isValid = ownerService.validateID(ownerData.ownerId);
-  if (!isValid) return returnNotFoundError(res, ownerData.ownerId);
-
   const owner = await ownerService.getOwnerById(ownerData.ownerId);
   if (!owner) return returnNotFoundError(res, ownerData.ownerId);
 
@@ -42,19 +40,20 @@ exports.addOwner = async function (req, res) {
 
 exports.updateOwner = async function (req, res) {
   const ownerData = getOwnerDataFromRequest(req);
-  const isValid = ownerService.validateID(ownerData.ownerId);
-  if (!isValid) return returnNotFoundError(res, ownerData.ownerId);
-
   const { error } = ownerService.validateOwner(ownerData);
+  if (error)
+    return errorUtil.errorRes(
+      res,
+      400,
+      "Owner error",
+      error.details[0].message
+    );
   const result = await ownerService.updateOwner(ownerData);
   res.json(result);
 };
 
 exports.deleteOwner = async function (req, res) {
   const ownerData = getOwnerDataFromRequest(req);
-  const isValid = ownerService.validateID(ownerData.ownerId);
-  if (!isValid) return returnNotFoundError(res, ownerData.ownerId);
-
   const owner = await ownerService.deleteOwner(ownerData.ownerId);
   if (!owner) return returnNotFoundError(res, ownerData.ownerId);
 
@@ -62,12 +61,16 @@ exports.deleteOwner = async function (req, res) {
 };
 
 function getOwnerDataFromRequest(req) {
-  return {
-    ownerId: req.params.id,
+  let owner = {
     username: req.body.username,
     fullname: req.body.fullname,
     email: req.body.email,
   };
+
+  if (req.params.id) {
+    owner.ownerId = req.params.id;
+  }
+  return owner;
 }
 
 function returnNotFoundError(res, ownerId) {
