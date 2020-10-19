@@ -10,6 +10,8 @@ if (!config.get("mongoDBPassword")) {
 
 module.exports = function () {
   const db = config.get("db");
+  // solves the ensureIndex deprecation warning
+  mongoose.set("useCreateIndex", true);
   mongoose
     .connect(
       `mongodb+srv://${config.get("mongoDBUser")}:${config.get(

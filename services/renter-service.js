@@ -1,11 +1,11 @@
 const Joi = require("joi");
 const winston = require("winston");
 const Renter = require("./models/renter");
-//const jwt = require("jsonwebtoken");
 
+// for testing only. Limited to 200 reults
 exports.getAllOwnwers = async function () {
-  const renters = await Renter.find().exec();
-  winston.debug(`Found ${renters.length} renters.`);
+  const renters = await Renter.find().limit(200).exec();
+  winston.info(`Found ${renters.length} renters.`);
   return renters;
 };
 
@@ -31,19 +31,16 @@ exports.addRenter = async function (renterData) {
   return renter._id;
 };
 
+// TODO: if email has changed, check uniqueness
 exports.updateRenter = async function (renterData) {
   let renter = {
     username: renterData.username,
     fullname: renterData.fullname,
     email: renterData.email,
   };
-  const result = await Renter.findByIdAndUpdate(
-    renterData.renterId,
-    owrenterner,
-    {
-      new: true,
-    }
-  ).exec();
+  const result = await Renter.findByIdAndUpdate(renterData.renterId, renter, {
+    new: true,
+  }).exec();
   winston.debug("Updated renter " + result);
   return result;
 };
@@ -56,6 +53,7 @@ exports.deleteRenter = async function (renterId) {
 
 exports.validateRenter = function (renter) {
   const schema = Joi.object({
+    renterId: Joi.string().optional(),
     username: Joi.string().required().min(5).max(32),
     fullname: Joi.string().required().min(5).max(100),
     email: Joi.string().email().required(),
