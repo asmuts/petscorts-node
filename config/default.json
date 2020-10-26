@@ -4,5 +4,7 @@
   "jwtPrivateKey": "",
   "mongoDBPassword": "",
   "mongoDBUser": "",
-  "db": "cluster0.agajx.mongodb.net/petscorts-dev"
+  "db": "cluster0.agajx.mongodb.net/petscorts-dev",
+  "google_map_api_key": "AIzaSyAn2UKSxv1p9vwuluwdoWzfchiA1eRteAM",
+  "geo-service-url": "https://geolocation-db.com/json/7733a990-ebd4-11ea-b9a6-2955706ddbf3/"
 }

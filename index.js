@@ -1,22 +1,24 @@
 require("express-async-errors");
 const express = require("express");
 const morgan = require("morgan");
-const winston = require("winston");
-
-const app = express();
-app.use(express.json());
+const cors = require("cors");
 
 console.log("Starting up");
 
-require("./startup/routes")(app);
-require("./startup/logging")(app);
-require("./startup/mongo")(app);
-require("./startup/validation")();
+const app = express();
 
 if (app.get("env") === "development" || "dev") {
   app.use(morgan("tiny"));
-  winston.info("Morgan enabled");
 }
+
+// TODO make a configrable whitelist
+app.use(cors());
+app.use(express.json());
+
+require("./startup/logging")(app);
+require("./startup/mongo")(app);
+require("./startup/routes")(app);
+require("./startup/validation")();
 
 // Note. Don't start the server here.
 // Supertest will load the app and start its own server.

@@ -3,9 +3,9 @@ const winston = require("winston");
 const Renter = require("./models/renter");
 
 // for testing only. Limited to 200 reults
-exports.getAllOwnwers = async function () {
+exports.getAllRenters = async function () {
   const renters = await Renter.find().limit(200).exec();
-  winston.info(`Found ${renters.length} renters.`);
+  winston.debug(`Found ${renters.length} renters.`);
   return renters;
 };
 
