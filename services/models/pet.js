@@ -15,6 +15,7 @@ const petSchema = new Schema({
     lowercase: true,
     min: [4, "Too short. Min is 4 cars."],
   },
+  state: { type: String, required: true, uppercase: true, min: 2, max: 2 },
   species: { type: String, required: true, lowercase: true },
   breed: { type: String, required: false, lowercase: true },
   images: [
@@ -37,6 +38,12 @@ const petSchema = new Schema({
     }),
     required: true,
   },
+  location: {
+    type: { type: String },
+    coordinates: [],
+  },
 });
+
+petSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model("Pet", petSchema);
