@@ -3,10 +3,11 @@ require("express-async-errors");
 const winston = require("winston");
 
 module.exports = function (app) {
-  if (app.get("env") != "production") {
-    const files = new winston.transports.File({ filename: "combined.log" });
-    winston.add(files);
-  }
+  // can write to the fs in AWS
+  //if (app.get("env") != "production") {
+  const files = new winston.transports.File({ filename: "combined.log" });
+  winston.add(files);
+  // }
   const console = new winston.transports.Console();
   winston.add(console);
 
