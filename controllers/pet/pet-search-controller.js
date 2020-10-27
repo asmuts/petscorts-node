@@ -61,7 +61,6 @@ exports.getPetsInCityAndNearby = async function (req, res) {
   //const pets = Array.from(setOfPets);
 
   winston.info(`PetSearchController.  Found ${pets.length} pets`);
-
   res.json(pets);
 };
 
@@ -94,14 +93,18 @@ async function findNearGeoLocation(latitude, longitude, maxDistanceMeters) {
 }
 
 exports.getPetsNearGeoLocation = async function (req, res) {
-  const latitude = req.query.lat;
-  const longitude = req.query.lng;
+  const latitude = req.params.lat;
+  const longitude = req.params.lng;
   const maxDistanceMeters = req.query.meters;
 
   const pets = await findNearGeoLocation(
     latitude,
     longitude,
     maxDistanceMeters
+  );
+  winston.info(
+    `PetSearchController: Found ${pets.length} pets near lat ${latitude}
+      lng ${longitude} maxDistanceMeters ${maxDistanceMeters}`
   );
   return res.json(pets);
 };
