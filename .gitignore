@@ -2,3 +2,7 @@ node_modules/
 coverage/
 *.log
 **/logs
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

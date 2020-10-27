@@ -1,5 +1,6 @@
 {
   "name": "petscorts-node",
+  "engines": { "node" : "12.16.1" },
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -13,7 +14,6 @@
   "dependencies": {
     "aws-sdk": "^2.771.0",
     "axios": "^0.21.0",
-    "bcrypt": "^5.0.0",
     "config": "^3.3.2",
     "cors": "^2.8.5",
     "express": "^4.17.1",
