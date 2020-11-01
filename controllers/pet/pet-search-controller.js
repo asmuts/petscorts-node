@@ -10,6 +10,22 @@ exports.getPets = async function (req, res) {
   res.json(pets);
 };
 
+exports.getPetsForOwner = async function (req, res) {
+  const ownerId = req.params.id;
+  const pets = await petService.getPetsForOwner(ownerId);
+  res.json(pets);
+};
+
+exports.getPetById = async function (req, res) {
+  const petId = req.params.id;
+  const pet = await petService.getPetById(petId);
+
+  if (!pet)
+    return errorUtil.errorRes(res, 422, "Pet Error", `No pet for id ${petId}`);
+
+  res.json(pet);
+};
+
 exports.getPetsInCity = async function (req, res) {
   const city = req.query.city;
   const state = req.query.state;
@@ -107,14 +123,4 @@ exports.getPetsNearGeoLocation = async function (req, res) {
       lng ${longitude} maxDistanceMeters ${maxDistanceMeters}`
   );
   return res.json(pets);
-};
-
-exports.getPetById = async function (req, res) {
-  const petId = req.params.id;
-  const pet = await petService.getPetById(petId);
-
-  if (!pet)
-    return errorUtil.errorRes(res, 422, "Pet Error", `No pet for id ${petId}`);
-
-  res.json(pet);
 };

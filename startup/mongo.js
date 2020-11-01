@@ -17,7 +17,7 @@ module.exports = function () {
       `mongodb+srv://${config.get("mongoDBUser")}:${config.get(
         "mongoDBPassword"
       )}@${db}?retryWrites=true&w=majority`,
-      { useNewUrlParser: true, useUnifiedTopology: true }
+      { useNewUrlParser: true, useUnifiedTopology: false }
     )
     .then(() => winston.info(`Connected to MDB: ${db}`));
 };

@@ -16,7 +16,7 @@ exports.upload = function (req, res) {
     const imageUrl = req.file.location;
     const petId = req.body.petId;
     petService.addImageToPet(petId, imageUrl);
-    winston.debug(`Uploaded image ${imageUrl} for pet ${petId}`);
+    winston.info(`Uploaded image ${imageUrl} for pet ${petId}`);
 
     return res.json({ imageUrl: imageUrl });
   });
