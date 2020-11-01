@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 
 const Schema = mongoose.Schema;
 
+// TODO add in unavailable days
+// or make a separate model akin to booking
+// default to available? or make it optional
 const petSchema = new Schema({
   name: {
     type: String,

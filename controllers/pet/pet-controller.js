@@ -5,6 +5,8 @@ const geoLocationService = require("../../services/location/geo-location-service
 const errorUtil = require("../util/error-util");
 const { getPetDataFromRequest } = require("./util/pet-data-util");
 
+require("request").debug = true;
+
 //--------------------------------------------
 //                WRITE METHODS
 // If this were a real site, I'd move all the write
@@ -23,8 +25,11 @@ exports.updatePet = async function (req, res) {
 async function updateOrAddPet(req, res) {
   const petData = getPetDataFromRequest(req);
   const { error } = petService.validatePet(petData);
-  if (error)
+  if (error) {
+    winston.info("req.body.name = " + req.body.name);
+    winston.info("Error with petData: " + petData);
     return errorUtil.errorRes(res, 400, "Pet error", error.details[0].message);
+  }
 
   const ownerId = req.body.ownerId;
   const owner = await ownerService.getOwnerById(ownerId);
@@ -73,7 +78,7 @@ async function addGeolocationToPetData(petData) {
 
 exports.deletePet = async function (req, res) {
   const petData = getPetDataFromRequest(req);
-  const pet = await petService.deleteOwner(petData.ownerId);
+  const pet = await petService.deletePet(petData.ownerId);
   if (!pet) return returnNotFoundError(res, petData.ownerId);
 
   res.json(pet);

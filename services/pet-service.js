@@ -5,8 +5,31 @@ const Pet = require("../services/models/pet");
 // here for testing purposes.
 exports.getAllPets = async function () {
   const pets = await Pet.find().limit(200).exec();
-  winston.debug(`Found ${pets.length} pets.`);
+  winston.info(`Found ${pets.length} pets.`);
   return pets;
+};
+
+// TODO add a populatePets method to the owner service
+// this will be for testing mainly
+// the petids are included in the owner record.
+// use a query with multiple ids instead
+// model.find({
+//   'owner$id': { $in: [
+//       mongoose.Types.ObjectId('4ed3ede8844f0f351100000c'),
+//       mongoose.Types.ObjectId('4ed3f117a844e0471100000d'),
+//       mongoose.Types.ObjectId('4ed3f18132f50c491100000e')
+//   ]}
+// }
+exports.getPetsForOwner = async function (ownerId) {
+  const pets = await Pet.find({ "owner._id": ownerId }).limit(200).exec();
+  winston.info(`Found ${pets.length} pets for owner ${ownerId}`);
+  return pets;
+};
+
+exports.getPetById = async function (petId) {
+  const pet = await Pet.findById(petId).exec();
+  winston.debug(`Found pet for ID: ${petId} - ${pet}`);
+  return pet;
 };
 
 // simple search by lowercase city
@@ -43,12 +66,6 @@ exports.getPetsNearLocation = async function (
   return pets;
 };
 
-exports.getPetById = async function (petId) {
-  const pet = await Pet.findById(petId).exec();
-  winston.debug(`Found pet for ID: ${petId} - ${pet}`);
-  return pet;
-};
-
 //--------------------------------------
 //       WRITE METHODS
 
@@ -56,7 +73,6 @@ exports.addPet = async function (petData) {
   let pet = new Pet({
     name: petData.name,
     city: petData.city,
-    street: petData.street,
     street: petData.street,
     state: petData.state,
     species: petData.species,
@@ -70,7 +86,7 @@ exports.addPet = async function (petData) {
     location: { type: "Point", coordinates: [petData.lng, petData.lat] },
   });
   //**** MONGO 2dsphere store lng|lat NOT lat|lng */
-  winston.debug(`About to save pet: ${pet}`);
+  winston.info(`About to save pet: ${pet}`);
   await pet.save();
   return pet._id;
 };
@@ -121,7 +137,7 @@ exports.validatePet = function (pet) {
     street: Joi.string().required().min(3),
     state: Joi.string().required().min(2).max(2),
     species: Joi.string().required().min(3),
-    breed: Joi.string().required().min(3),
+    breed: Joi.string().optional().min(3),
     description: Joi.string().required().min(3),
     dailyRentalRate: Joi.number().required().min(0),
     ownerId: Joi.objectId().required(),

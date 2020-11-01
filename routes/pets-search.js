@@ -6,6 +6,11 @@ const router = express.Router();
 
 // NOTE: I broke out the Read calls so they can be moved to
 // a separate Node application.
+router.get(
+  "/owner/:id",
+  validateObjectId_mw,
+  petSearchController.getPetsForOwner
+);
 router.get("/", petSearchController.getPets);
 router.get("/city/:city/state/:state", petSearchController.getPetsInCity);
 router.get(

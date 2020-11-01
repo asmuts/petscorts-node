@@ -3,6 +3,7 @@ const owner = require("../services/models/owner");
 const ownerService = require("../services/owner-service");
 const errorUtil = require("./util/error-util");
 
+// for testing.
 exports.getAllOwners = async function (req, res) {
   const owners = await ownerService.getAllOwnwers();
   res.json(owners);
@@ -16,8 +17,17 @@ exports.getOwnerById = async function (req, res) {
   res.json(owner);
 };
 
+exports.getOwnerByEmail = async function (req, res) {
+  const email = req.params.email;
+  const owner = await ownerService.getOwnerByEmail(email);
+  if (!owner) return returnNotFoundError(res, email);
+
+  res.json(owner);
+};
+
 exports.addOwner = async function (req, res) {
   const ownerData = getOwnerDataFromRequest(req);
+  winston.info("addOwner: " + ownerData);
   const { error } = ownerService.validateOwner(ownerData);
   if (error)
     return errorUtil.errorRes(
@@ -29,12 +39,12 @@ exports.addOwner = async function (req, res) {
 
   const existing = await ownerService.getOwnerByEmail(ownerData.email);
   if (existing) {
-    winston.debug("Email in use");
+    winston.info("Email in use");
     return errorUtil.errorRes(res, 422, "Owner error", "Email is in use.");
   }
 
   const newOwnerId = await ownerService.addOwner(ownerData);
-  winston.debug(`Added new owner: ${newOwnerId}`);
+  winston.info(`Added new owner: ${newOwnerId}`);
   res.json({ ownerId: newOwnerId });
 };
 
