@@ -5,7 +5,7 @@ const geoLocationService = require("../../services/location/geo-location-service
 const errorUtil = require("../util/error-util");
 const { getPetDataFromRequest } = require("./util/pet-data-util");
 
-require("request").debug = true;
+//require("request").debug = true;
 
 //--------------------------------------------
 //                WRITE METHODS
