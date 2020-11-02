@@ -29,7 +29,7 @@ const petSchema = new Schema({
     },
   ],
   description: { type: String, required: true },
-  dailyRate: Number,
+  dailyRentalRate: Number,
   createdAt: { type: Date, default: Date.now },
   owner: {
     type: new mongoose.Schema({
