@@ -83,3 +83,13 @@ exports.deletePet = async function (req, res) {
 
   res.json(pet);
 };
+
+exports.removeImageFromPet = async function (req, res) {
+  const petData = getPetDataFromRequest(req);
+  const imageId = req.params.imageId;
+  // TODO error handling for params
+  // TODO figure out how to remove items from S3
+  // as of now, they'll just sit there.
+  const pet = await petService.removeImageFromPet(petData.petId, imageId);
+  res.json(pet);
+};

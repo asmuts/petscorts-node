@@ -96,6 +96,18 @@ exports.addImageToPet = async function (petId, imageUrl) {
   pet.images.push({ url: imageUrl });
   winston.info(`Adding image to pet ${petId}`);
   pet.save();
+  return pet;
+};
+
+exports.removeImageFromPet = async function (petId, imageId) {
+  const pet = await Pet.findById(petId);
+  //  mongoose can do this for me, cool
+  pet.images.pull({ _id: imageId });
+  //pet.images = pet.images.filter((image) => image._id !== imageId);
+  winston.info(`Removing image ${imageId} from pet ${petId}`);
+  // TODO figure out how to remove from S3
+  pet.save();
+  return pet;
 };
 
 exports.updatePet = async function (petData) {
