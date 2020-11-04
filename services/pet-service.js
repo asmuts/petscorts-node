@@ -99,15 +99,20 @@ exports.addImageToPet = async function (petId, imageUrl) {
   return pet;
 };
 
+// Return the image so we can use it to delete it from S3
 exports.removeImageFromPet = async function (petId, imageId) {
   const pet = await Pet.findById(petId);
+
+  // mondg ids are objects, they can't be compared to strings with ===
+  const found = pet.images.find((image) => image._id.equals(imageId));
+  winston.info("Image " + found);
+
   //  mongoose can do this for me, cool
   pet.images.pull({ _id: imageId });
-  //pet.images = pet.images.filter((image) => image._id !== imageId);
   winston.info(`Removing image ${imageId} from pet ${petId}`);
-  // TODO figure out how to remove from S3
   pet.save();
-  return pet;
+
+  return found;
 };
 
 exports.updatePet = async function (petData) {

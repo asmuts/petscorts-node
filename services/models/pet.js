@@ -48,5 +48,6 @@ const petSchema = new Schema({
 });
 
 petSchema.index({ location: "2dsphere" });
+petSchema.index({ "owner._id": 1 });
 
 module.exports = mongoose.model("Pet", petSchema);
