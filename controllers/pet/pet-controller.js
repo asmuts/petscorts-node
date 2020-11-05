@@ -2,6 +2,7 @@ const winston = require("winston");
 const petService = require("../../services/pet-service");
 const ownerService = require("../../services/owner-service");
 const geoLocationService = require("../../services/location/geo-location-service");
+const { removeImageFromS3 } = require("../../services/image-upload-service-s3");
 const errorUtil = require("../util/error-util");
 const { getPetDataFromRequest } = require("./util/pet-data-util");
 
@@ -90,6 +91,16 @@ exports.removeImageFromPet = async function (req, res) {
   // TODO error handling for params
   // TODO figure out how to remove items from S3
   // as of now, they'll just sit there.
-  const pet = await petService.removeImageFromPet(petData.petId, imageId);
-  res.json(pet);
+  const removedImage = await petService.removeImageFromPet(
+    petData.petId,
+    imageId
+  );
+
+  if (removedImage && removedImage.url) {
+    const url = removedImage.url;
+    // don't inlude the /
+    const fileName = url.substring(url.lastIndexOf("/") + 1, [url.length]);
+    removeImageFromS3(fileName);
+  }
+  res.json(removedImage);
 };
