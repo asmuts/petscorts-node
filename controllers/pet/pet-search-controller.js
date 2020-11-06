@@ -1,9 +1,11 @@
 const winston = require("winston");
+const _ = require("lodash");
+
 const cityService = require("../../services/location/city-service");
 const geoLocationService = require("../../services/location/geo-location-service");
 const petService = require("../../services/pet-service");
 const errorUtil = require("../util/error-util");
-const _ = require("lodash");
+const { getStateCodeForNameIfNeeded } = require("./util/pet-data-util");
 
 exports.getPets = async function (req, res) {
   const pets = await petService.getAllPets();
@@ -38,10 +40,11 @@ exports.getPetsInCity = async function (req, res) {
 // might want to have the client do the supplementation
 exports.getPetsInCityAndNearby = async function (req, res) {
   const city = req.params.city;
-  const state = req.params.state;
+  let state = req.params.state;
 
   if (city && state) {
     city.trim();
+    state = getStateCodeForNameIfNeeded(state);
     state.trim().toUpperCase();
   }
 
@@ -68,15 +71,14 @@ exports.getPetsInCityAndNearby = async function (req, res) {
 
   let petsComb = petsInCityAndState.value.concat(petsNearby.value);
   winston.info(`PetSearchController. petsComb ${petsComb.length}`);
-  //const pets = _.uniqBy(petsComb, (e) => {
-  //  return e._id;
-  //});
-  //_.uniq(pets);
-  const pets = _.unionBy(petsComb, "_id");
-  //let setOfPets = new Set(petsComb);
-  //const pets = Array.from(setOfPets);
 
-  winston.info(`PetSearchController.  Found ${pets.length} pets`);
+  // for comparing mongo ids. can't use ===
+  const comparator = (a, b) => {
+    return a._id.equals(b._id);
+  };
+  const pets = _.unionWith(petsComb, comparator);
+
+  winston.info(`PetSearchController.  Found ${pets.length} unique pets`);
   res.json(pets);
 };
 
