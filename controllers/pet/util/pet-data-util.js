@@ -15,13 +15,22 @@ exports.getPetDataFromRequest = function (req) {
     ownerId: req.body.ownerId,
   };
 
-  // handle full state name conversion if needed
-  if (pet.state && pet.state.trim().length > 2) {
-    pet.state = getStateCodeForName(pet.state.trim());
-  }
+  pet.state = getStateCode(pet.state);
 
   if (req.params.id) {
     pet.petId = req.params.id;
   }
   return pet;
 };
+
+exports.getStateCodeForNameIfNeeded = function (state) {
+  return getStateCode(state);
+};
+
+function getStateCode(state) {
+  // handle full state name conversion if needed
+  if (state && state.trim().length > 2) {
+    return getStateCodeForName(state.trim());
+  }
+  return state;
+}
