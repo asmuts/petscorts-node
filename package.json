@@ -1,11 +1,15 @@
 {
   "name": "petscorts-node",
-  "engines": { "node" : "12.16.1" },
+  "engines": {
+    "node": "12.16.1"
+  },
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest --watchAll --verbose",
+    "test": "jest --watchAll",
+    "unit": "jest unit/* --watchAll",
+    "integration": "jest integration/*",
     "start": "node server.js"
   },
   "keywords": [],
@@ -18,10 +22,12 @@
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-async-errors": "^3.1.1",
+    "express-jwt": "^6.0.0",
     "joi": "^17.2.1",
     "joi-objectid": "^3.0.1",
     "joi-password-complexity": "^4.2.1",
     "jsonwebtoken": "^8.5.1",
+    "jwks-rsa": "^1.11.0",
     "lodash": "^4.17.20",
     "mongoose": "^5.10.7",
     "morgan": "^1.10.0",
@@ -33,6 +39,7 @@
   },
   "devDependencies": {
     "jest": "^26.5.3",
+    "node-mocks-http": "^1.9.0",
     "supertest": "^5.0.0"
   }
 }
