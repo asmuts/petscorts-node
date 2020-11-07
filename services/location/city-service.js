@@ -26,7 +26,7 @@ const cityNameCache = new Cache({
 // For testing only. Limited to 200 reults
 // There are 15k in the database.
 exports.getLargestCities = async function () {
-  //TODO make the numner configurable
+  //TODO make the numbner configurable
   const cities = await City.find()
     .sort({ population: "descending" })
     .limit(200)

@@ -1,0 +1,26 @@
+exports.twoCities = [
+  {
+    _id: "5f94919bdb62959eb0577b73",
+    city: "New York",
+    city_upper: "NEW YORK",
+    state_id: "NY",
+    state_name: "New York",
+    county_name: "New York",
+    lat: 40.6943,
+    lng: -73.9249,
+    population: 18713220,
+    timezone: "America/New_York",
+  },
+  {
+    _id: "5f94919bdb62959eb0577b7a",
+    city: "Los Angeles",
+    city_upper: "LOS ANGELES",
+    state_id: "CA",
+    state_name: "California",
+    county_name: "Los Angeles",
+    lat: 34.1139,
+    lng: -118.4068,
+    population: 12750807,
+    timezone: "America/Los_Angeles",
+  },
+];
