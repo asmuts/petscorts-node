@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.post("/", auth_mw, ownerController.addOwner);
 router.get("", auth_mw, ownerController.getAllOwners);
+router.get("/auth0_sub/:auth0_sub", ownerController.getOwnerByAuth0Sub);
 router.get("/email/:email", ownerController.getOwnerByEmail);
 router.get(
   "/:id",

@@ -25,6 +25,14 @@ exports.getOwnerByEmail = async function (req, res) {
   res.json(owner);
 };
 
+exports.getOwnerByAuth0Sub = async function (req, res) {
+  const auth0_sub = req.params.auth0_sub;
+  const owner = await ownerService.getOwnerByAuth0Sub(auth0_sub);
+  if (!owner) return returnNotFoundError(res, auth0_sub);
+
+  res.json(owner);
+};
+
 exports.addOwner = async function (req, res) {
   const ownerData = getOwnerDataFromRequest(req);
   winston.info("addOwner: " + ownerData);
@@ -75,6 +83,7 @@ function getOwnerDataFromRequest(req) {
     username: req.body.username,
     fullname: req.body.fullname,
     email: req.body.email,
+    auth0_sub: req.body.auth0_sub,
   };
 
   if (req.params.id) {

@@ -2,6 +2,7 @@ const config = require("config");
 const jwt = require("express-jwt");
 const jwksRsa = require("jwks-rsa");
 
+// adds the user to the request.  req.user
 module.exports = jwt({
   secret: jwksRsa.expressJwtSecret({
     cache: true,

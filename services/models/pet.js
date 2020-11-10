@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const Schema = mongoose.Schema;
 
 // TODO add in unavailable days
@@ -31,20 +30,12 @@ const petSchema = new Schema({
   description: { type: String, required: true },
   dailyRentalRate: Number,
   createdAt: { type: Date, default: Date.now },
-  owner: {
-    type: new mongoose.Schema({
-      _id: { type: Schema.Types.ObjectId, ref: "Owner" },
-      fullname: {
-        type: String,
-        required: true,
-      },
-    }),
-    required: true,
-  },
+  owner: { type: Schema.Types.ObjectId, ref: "Owner" },
   location: {
     type: { type: String },
     coordinates: [],
   },
+  bookings: [{ type: Schema.Types.ObjectId, ref: "Booking" }],
 });
 
 petSchema.index({ location: "2dsphere" });

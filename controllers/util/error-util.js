@@ -5,6 +5,7 @@ exports.errorRes = function (res, statusCode, title, message) {
   res.status(statusCode).json(createJSON(title, message));
 };
 
+// TODO either use jsend or google json format
 function createJSON(title, message) {
   const json = {
     errors: [

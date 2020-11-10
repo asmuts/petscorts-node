@@ -22,11 +22,23 @@ exports.getOwnerByEmail = async function (email) {
   return owner;
 };
 
+// Uniqueness from Auth) can't be garuanteed by email from Auth0
+// unless email is verified. Someone could fake another user by signing
+// up via username and password with someone elsel's password.
+// Auth0's sub is unique. Use it for authentication matching.
+// It's also on the JWT, so I can authorize with it as well.
+exports.getOwnerByAuth0Sub = async function (auth0_sub) {
+  const owner = await Owner.findOne({ auth0_sub }).exec();
+  winston.info(`Found owner for auth0_sub: ${auth0_sub} - ${auth0_sub}`);
+  return owner;
+};
+
 exports.addOwner = async function (ownerData) {
   let owner = new Owner({
     username: ownerData.username,
     fullname: ownerData.fullname,
     email: ownerData.email,
+    auth0_sub: ownerData.auth0_sub,
   });
   await owner.save();
   return owner._id;
@@ -34,14 +46,19 @@ exports.addOwner = async function (ownerData) {
 
 exports.removePetFromOwner = async function (ownerId, petId) {
   const owner = await Owner.findById(ownerId);
-  const index = owner.pets.indexOf(petId);
-  if (index > -1) {
-    owner.pets.splice(index, 1);
+
+  // mondg ids are objects, they can't be compared to strings with ===
+  const found = owner.pets.find((pet) => pet._id.equals(petId));
+  winston.info("Pet " + found);
+
+  if (found) {
+    owner.pets.pull({ _id: petId });
     winston.debug(`Removing pet from owner ${petId}`);
     owner.save();
   } else {
     winston.info(`No such pet to remove from owner: ${petId}`);
   }
+  return owner;
 };
 
 exports.addPetToOwner = async function (ownerId, petId) {
@@ -49,13 +66,16 @@ exports.addPetToOwner = async function (ownerId, petId) {
   owner.pets.push(petId);
   winston.debug(`Adding pet to owner ${petId}`);
   owner.save();
+  return owner;
 };
 
+// TODO distinguish between put and patch
 exports.updateOwner = async function (ownerData) {
   let owner = {
     username: ownerData.username,
     fullname: ownerData.fullname,
     email: ownerData.email,
+    auth0_sub: ownerData.auth0_sub,
   };
   const result = await Owner.findByIdAndUpdate(ownerData.ownerId, owner, {
     new: true,
@@ -76,7 +96,9 @@ exports.validateOwner = function (owner) {
     username: Joi.string().required().min(5),
     fullname: Joi.string().required().min(5),
     email: Joi.string().email().required(),
+    auth0_sub: Joi.string().optional(),
   });
+  // TODO make sub required after cleaning up the db
   return schema.validate(owner);
 };
 

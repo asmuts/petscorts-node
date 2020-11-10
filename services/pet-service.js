@@ -21,7 +21,7 @@ exports.getAllPets = async function () {
 //   ]}
 // }
 exports.getPetsForOwner = async function (ownerId) {
-  const pets = await Pet.find({ "owner._id": ownerId }).limit(200).exec();
+  const pets = await Pet.find({ owner: ownerId }).limit(200).exec();
   winston.info(`Found ${pets.length} pets for owner ${ownerId}`);
   return pets;
 };
@@ -30,6 +30,22 @@ exports.getPetById = async function (petId) {
   const pet = await Pet.findById(petId).exec();
   winston.debug(`Found pet for ID: ${petId} - ${pet}`);
   return pet;
+};
+
+// Consider chaning the datamodel so this will work.
+// The current denormalization is not that useful.
+exports.getPetByIdWithOwnerAndBookings = async function (petId) {
+  try {
+    const pet = await Pet.findById(pet._id)
+      .populate("bookings")
+      .populate("owner")
+      .exec();
+    winston.debug(`Found pet for ID: ${petId} - ${pet}`);
+    return { pet };
+  } catch (err) {
+    winston.error(err);
+    return { err: err.message };
+  }
 };
 
 // simple search by lowercase city
@@ -79,10 +95,7 @@ exports.addPet = async function (petData) {
     breed: petData.breed,
     description: petData.description,
     dailyRentalRate: petData.dailyRentalRate,
-    owner: {
-      _id: petData.ownerId,
-      fullname: petData.ownerName,
-    },
+    owner: petData.ownerId,
     location: { type: "Point", coordinates: [petData.lng, petData.lat] },
   });
   //**** MONGO 2dsphere store lng|lat NOT lat|lng */
@@ -125,10 +138,7 @@ exports.updatePet = async function (petData) {
     breed: petData.breed,
     description: petData.description,
     dailyRentalRate: petData.dailyRentalRate,
-    owner: {
-      _id: petData.ownerId,
-      fullname: petData.ownerName,
-    },
+    owner: petData.ownerId,
     location: { type: "Point", coordinates: [petData.lng, petData.lat] },
   };
   //**** MONGO 2dsphere store lng|lat NOT lat|lng */
@@ -137,6 +147,28 @@ exports.updatePet = async function (petData) {
   }).exec();
   winston.debug("Updated Pet " + result);
   return result;
+};
+
+exports.addBookingToPet = async function (petId, bookingId) {
+  try {
+    const pet = await Pet.findById(petId);
+    pet.bookings.push(bookingId);
+    return { pet };
+  } catch (err) {
+    winston.error(err);
+    return { err: err.message };
+  }
+};
+
+exports.removeBookingFromPet = async function (petId, bookingId) {
+  try {
+    const pet = await Pet.findById(petId);
+    pet.bookings.pull(bookingId);
+    return { pet };
+  } catch (err) {
+    winston.error(err);
+    return { err: err.message };
+  }
 };
 
 exports.deletePet = async function (renterId) {

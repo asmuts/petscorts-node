@@ -21,6 +21,20 @@ exports.getRenterById = async function (req, res) {
   res.json(renter);
 };
 
+exports.getRenterByAuth0Sub = async function (req, res) {
+  const auth0_sub = req.params.auth0_sub;
+  const renter = await renterService.getRenterByAuth0Sub(auth0_sub);
+
+  if (!renter)
+    return errorUtil.errorRes(
+      res,
+      422,
+      "Renter Error",
+      `No renter for auth0_sub ${auth0_sub}`
+    );
+  res.json(renter);
+};
+
 exports.addRenter = async function (req, res) {
   const renterData = getRenterDataFromRequest(req);
   const { error } = renterService.validateRenter(renterData);
@@ -70,6 +84,7 @@ function getRenterDataFromRequest(req) {
     username: req.body.username,
     fullname: req.body.fullname,
     email: req.body.email,
+    auth0_sub: req.body.auth0_sub,
   };
 
   if (req.params.id) {
