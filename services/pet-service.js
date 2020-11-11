@@ -5,40 +5,54 @@ const Pet = require("../services/models/pet");
 // here for testing purposes.
 exports.getAllPets = async function () {
   const pets = await Pet.find().limit(200).exec();
-  winston.info(`Found ${pets.length} pets.`);
+  winston.info(`PetService. Found ${pets.length} pets.`);
   return pets;
 };
 
-// TODO add a populatePets method to the owner service
-// this will be for testing mainly
-// the petids are included in the owner record.
-// use a query with multiple ids instead
-// model.find({
-//   'owner$id': { $in: [
-//       mongoose.Types.ObjectId('4ed3ede8844f0f351100000c'),
-//       mongoose.Types.ObjectId('4ed3f117a844e0471100000d'),
-//       mongoose.Types.ObjectId('4ed3f18132f50c491100000e')
-//   ]}
-// }
+// I added a populatePets method to the owner service
+// This here will be for testing mainly
+// The petids are included in the owner record.
 exports.getPetsForOwner = async function (ownerId) {
-  const pets = await Pet.find({ "owner._id": ownerId }).limit(200).exec();
-  winston.info(`Found ${pets.length} pets for owner ${ownerId}`);
+  const pets = await Pet.find({ owner: ownerId }).limit(200).exec();
+  winston.info(`PetService. Found ${pets.length} pets for owner ${ownerId}`);
   return pets;
 };
 
 exports.getPetById = async function (petId) {
-  const pet = await Pet.findById(petId).exec();
-  winston.debug(`Found pet for ID: ${petId} - ${pet}`);
-  return pet;
+  try {
+    const pet = await Pet.findById(petId).exec();
+    winston.debug(`PetService. Found pet for ID: ${petId} - ${pet}`);
+    return { pet };
+  } catch (err) {
+    winston.error(err);
+    return { err: err.message };
+  }
 };
 
-// simple search by lowercase city
+// Changed the datamodel so that populate will work
+exports.getPetByIdWithOwnerAndBookings = async function (petId) {
+  try {
+    const pet = await Pet.findById(pet._id)
+      .populate("bookings")
+      .populate("owner")
+      .exec();
+    winston.debug(`PetService. Found pet for ID: ${petId} - ${pet}`);
+    return { pet };
+  } catch (err) {
+    winston.error(err);
+    return { err: err.message };
+  }
+};
+
+// simple search by lowercase city and state code
 exports.getPetsInCityAndState = async function (city, state) {
   let pets = [];
   if (city && state) {
     const query = { city: city.toLowerCase(), state: state.toUpperCase() };
     pets = await Pet.find(query).limit(1000).exec();
-    winston.info(`Found ${pets.length} pets in city ${city} state ${state}.`);
+    winston.info(
+      `PetService. Found ${pets.length} pets in city ${city} state ${state}.`
+    );
   }
   return pets;
 };
@@ -48,8 +62,6 @@ exports.getPetsNearLocation = async function (
   longitude,
   maxDistanceMeters
 ) {
-  winston.debug("getPetsNearLocation");
-
   //**** MONGO 2dsphere store lng|lat NOT lat|lng !!! */
   let pets = await Pet.find({
     location: {
@@ -62,7 +74,7 @@ exports.getPetsNearLocation = async function (
       },
     },
   }).exec();
-  winston.info("Found " + pets.length + " for location");
+  winston.info("PetService. Found " + pets.length + " for location");
   return pets;
 };
 
@@ -79,42 +91,58 @@ exports.addPet = async function (petData) {
     breed: petData.breed,
     description: petData.description,
     dailyRentalRate: petData.dailyRentalRate,
-    owner: {
-      _id: petData.ownerId,
-      fullname: petData.ownerName,
-    },
+    owner: petData.ownerId,
     location: { type: "Point", coordinates: [petData.lng, petData.lat] },
   });
   //**** MONGO 2dsphere store lng|lat NOT lat|lng */
-  winston.info(`About to save pet: ${pet}`);
-  await pet.save();
-  return pet._id;
+  try {
+    winston.info(`PetService. About to save pet: ${pet}`);
+    await pet.save();
+    return { pet };
+  } catch (err) {
+    winston.log("error", err);
+    return { err: err.message };
+  }
 };
 
 exports.addImageToPet = async function (petId, imageUrl) {
-  const pet = await Pet.findById(petId);
-  pet.images.push({ url: imageUrl });
-  winston.info(`Adding image to pet ${petId}`);
-  pet.save();
-  return pet;
+  try {
+    const pet = await Pet.findById(petId);
+    if (!pet) throw new Error("Couldn't find pet for id " + petId);
+
+    pet.images.push({ url: imageUrl });
+    winston.info(`PetService. Adding image to pet ${petId}`);
+    pet.save();
+    return { pet };
+  } catch (err) {
+    winston.log("error", err);
+    return { err: err.message };
+  }
 };
 
 // Return the image so we can use it to delete it from S3
 exports.removeImageFromPet = async function (petId, imageId) {
-  const pet = await Pet.findById(petId);
+  try {
+    const pet = await Pet.findById(petId);
+    if (!pet) throw new Error("Couldn't find pet for id " + petId);
 
-  // mondg ids are objects, they can't be compared to strings with ===
-  const found = pet.images.find((image) => image._id.equals(imageId));
-  winston.info("Image " + found);
+    // mongo ids are objects, they can't be compared to strings with ===
+    const found = pet.images.find((image) => image._id.equals(imageId));
 
-  //  mongoose can do this for me, cool
-  pet.images.pull({ _id: imageId });
-  winston.info(`Removing image ${imageId} from pet ${petId}`);
-  pet.save();
+    // mongoose can do this for me, cool
+    pet.images.pull({ _id: imageId });
+    pet.save();
+    winston.info(`PetService. Removed image ${imageId} from pet ${petId}`);
 
-  return found;
+    return { pet, imageId };
+  } catch (err) {
+    winston.log("error", err);
+    return { err: err.message };
+  }
 };
 
+// This method does not find coordinates for addresses.
+// That's the reponsiblity of the caller.
 exports.updatePet = async function (petData) {
   let pet = {
     name: petData.name,
@@ -125,24 +153,56 @@ exports.updatePet = async function (petData) {
     breed: petData.breed,
     description: petData.description,
     dailyRentalRate: petData.dailyRentalRate,
-    owner: {
-      _id: petData.ownerId,
-      fullname: petData.ownerName,
-    },
+    owner: petData.ownerId,
     location: { type: "Point", coordinates: [petData.lng, petData.lat] },
   };
   //**** MONGO 2dsphere store lng|lat NOT lat|lng */
-  const result = await Pet.findByIdAndUpdate(petData.petId, pet, {
-    new: true,
-  }).exec();
-  winston.debug("Updated Pet " + result);
-  return result;
+  try {
+    const result = await Pet.findByIdAndUpdate(petData.petId, pet, {
+      new: true,
+    }).exec();
+    winston.info("PetService. Updated Pet " + result);
+    return { pet: result };
+  } catch (err) {
+    winston.log("error", err);
+    return { err: err.message };
+  }
 };
 
-exports.deletePet = async function (renterId) {
-  winston.info(`Deleting Pet - id: ${renterId}`);
-  const pet = await Pet.findByIdAndRemove(renterId);
-  return pet;
+exports.addBookingToPet = async function (petId, bookingId, session) {
+  try {
+    const pet = await Pet.findByIdAndUpdate(
+      petId,
+      { $push: { bookings: bookingId } },
+      { session, new: true }
+    ).exec();
+    return { pet };
+  } catch (err) {
+    winston.log("error", err);
+    return { err: err.message };
+  }
+};
+
+exports.removeBookingFromPet = async function (petId, bookingId) {
+  try {
+    const pet = await Pet.findById(petId);
+    pet.bookings.pull(bookingId);
+    return { pet };
+  } catch (err) {
+    winston.log("error", err);
+    return { err: err.message };
+  }
+};
+
+exports.deletePet = async function (petId) {
+  try {
+    winston.info(`PetService. Deleting Pet - id: ${petId}`);
+    const pet = await Pet.findByIdAndRemove(petId);
+    return { pet };
+  } catch (err) {
+    winston.log("error", err);
+    return { err: err.message };
+  }
 };
 
 exports.validatePet = function (pet) {

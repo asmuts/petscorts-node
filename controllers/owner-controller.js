@@ -2,45 +2,72 @@ const winston = require("winston");
 const owner = require("../services/models/owner");
 const ownerService = require("../services/owner-service");
 const errorUtil = require("./util/error-util");
+const jsu = require("./util/json-style-util");
 
-// for testing.
+// This method is merely for testing.
 exports.getAllOwners = async function (req, res) {
-  const owners = await ownerService.getAllOwnwers();
-  res.json(owners);
+  const { owners, err } = await ownerService.getAllOwners();
+  if (err) return returnOtherError(res, 500, err);
+  if (!owners) return returnNotFoundError(res, ownerData.ownerId);
+  res.json(jsu.payload(owners));
 };
 
 exports.getOwnerById = async function (req, res) {
   const ownerData = getOwnerDataFromRequest(req);
-  const owner = await ownerService.getOwnerById(ownerData.ownerId);
+  const { owner, err } = await ownerService.getOwnerById(ownerData.ownerId);
+  if (err) return returnOtherError(res, 500, err);
   if (!owner) return returnNotFoundError(res, ownerData.ownerId);
+  res.json(jsu.payload(owner));
+};
 
-  res.json(owner);
+exports.getOwnerByIdWithPets = async function (req, res) {
+  const ownerData = getOwnerDataFromRequest(req);
+  const { owner, err } = await ownerService.getOwnerByIdWithPets(
+    ownerData.ownerId
+  );
+  if (err) return returnOtherError(res, 500, err);
+  if (!owner) return returnNotFoundError(res, ownerData.ownerId);
+  res.json(jsu.payload(owner));
 };
 
 exports.getOwnerByEmail = async function (req, res) {
   const email = req.params.email;
-  const owner = await ownerService.getOwnerByEmail(email);
+  const { owner, err } = await ownerService.getOwnerByEmail(email);
+  if (err) return returnOtherError(res, 500, err);
   if (!owner) return returnNotFoundError(res, email);
-
-  res.json(owner);
+  res.json(jsu.payload(owner));
 };
+
+exports.getOwnerByAuth0Sub = async function (req, res) {
+  const auth0_sub = req.params.auth0_sub;
+  const { owner, err } = await ownerService.getOwnerByAuth0Sub(auth0_sub);
+  if (err) return returnOtherError(res, 500, err);
+  if (!owner) return returnNotFoundError(res, auth0_sub);
+  res.json(jsu.payload(owner));
+};
+
+exports.getOwnerByAuth0SubWithPets = async function (req, res) {
+  const auth0_sub = req.params.auth0_sub;
+  const { owner, err } = await ownerService.getOwnerByAuth0SubWithPets(
+    auth0_sub
+  );
+  if (err) return returnOtherError(res, 500, err);
+  if (!owner) return returnNotFoundError(res, auth0_sub);
+  res.json(jsu.payload(owner));
+};
+
+////////////////////////////////////////////////////
 
 exports.addOwner = async function (req, res) {
   const ownerData = getOwnerDataFromRequest(req);
   winston.info("addOwner: " + ownerData);
   const { error } = ownerService.validateOwner(ownerData);
-  if (error)
-    return errorUtil.errorRes(
-      res,
-      400,
-      "Owner error",
-      error.details[0].message
-    );
+  if (error) return returnOtherError(res, 400, error.details[0].message);
 
   const existing = await ownerService.getOwnerByEmail(ownerData.email);
   if (existing) {
     winston.info("Email in use");
-    return errorUtil.errorRes(res, 422, "Owner error", "Email is in use.");
+    return returnOtherError(res, 422, "Email is in use.");
   }
 
   const newOwnerId = await ownerService.addOwner(ownerData);
@@ -51,13 +78,7 @@ exports.addOwner = async function (req, res) {
 exports.updateOwner = async function (req, res) {
   const ownerData = getOwnerDataFromRequest(req);
   const { error } = ownerService.validateOwner(ownerData);
-  if (error)
-    return errorUtil.errorRes(
-      res,
-      400,
-      "Owner error",
-      error.details[0].message
-    );
+  if (error) return returnOtherError(res, 400, error.details[0].message);
   const result = await ownerService.updateOwner(ownerData);
   res.json(result);
 };
@@ -75,6 +96,7 @@ function getOwnerDataFromRequest(req) {
     username: req.body.username,
     fullname: req.body.fullname,
     email: req.body.email,
+    auth0_sub: req.body.auth0_sub,
   };
 
   if (req.params.id) {
@@ -83,6 +105,8 @@ function getOwnerDataFromRequest(req) {
   return owner;
 }
 
+//////////////////////////////////////////////////////////
+
 function returnNotFoundError(res, ownerId) {
   return errorUtil.errorRes(
     res,
@@ -90,4 +114,8 @@ function returnNotFoundError(res, ownerId) {
     "Owner Error",
     `No owner for id ${ownerId}`
   );
+
+  function returnOtherError(res, code, err) {
+    return errorUtil.errorRes(res, code, "Owner Error", err);
+  }
 }

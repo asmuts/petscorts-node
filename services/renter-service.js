@@ -21,22 +21,72 @@ exports.getRenterByEmail = async function (email) {
   return renter;
 };
 
+exports.getRenterByAuth0Sub = async function (auth0_sub) {
+  const renter = await Renter.findOne({ auth0_sub }).exec();
+  winston.debug(`Found renter for auth0_sub: ${eauth0_submail} - ${renter}`);
+  return renter;
+};
+
 exports.addRenter = async function (renterData) {
   let renter = new Renter({
     username: renterData.username,
     fullname: renterData.fullname,
     email: renterData.email,
+    auth0_sub: renterData.auth0_sub,
   });
   await renter.save();
   return renter._id;
 };
 
+// if the caller has the entire renter record
+// just use the standard update
+exports.updateSwipeCustomerId = async function (
+  renterId,
+  swipeCustomerId,
+  session
+) {
+  try {
+    const renter = await Renter.findByIdAndUpdate(
+      renterId,
+      {
+        stripeCustomerId: swipeCustomerId,
+      },
+      {
+        new: true,
+        session,
+      }
+    ).exec();
+    return { renter };
+  } catch (err) {
+    winston.error(err);
+    return { err: err.message };
+  }
+};
+
+exports.addBookingToRenter = async function (renterId, bookingId, session) {
+  try {
+    const renter = await Renter.findById(renterId);
+    renter.bookings.push(bookingId, { session });
+    return { renter };
+  } catch (err) {
+    winston.error(err);
+    return { err: err.message };
+  }
+};
+
+// Crude tally
+exports.addToRevenue = async function (renterId, amount) {
+  Renter.update({ _id: renterId }, { $inc: { revenue: amount } });
+};
+
 // TODO: if email has changed, check uniqueness
+// TODO distinguish between put and patch
 exports.updateRenter = async function (renterData) {
   let renter = {
     username: renterData.username,
     fullname: renterData.fullname,
     email: renterData.email,
+    auth0_sub: renterData.auth0_sub,
   };
   const result = await Renter.findByIdAndUpdate(renterData.renterId, renter, {
     new: true,
@@ -57,6 +107,7 @@ exports.validateRenter = function (renter) {
     username: Joi.string().required().min(5).max(32),
     fullname: Joi.string().required().min(5).max(100),
     email: Joi.string().email().required(),
+    auth0_sub: Joi.string().required().min(5).max(64),
   });
   return schema.validate(renter);
 };

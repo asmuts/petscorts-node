@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
 const renterSchema = new mongoose.Schema({
   username: {
@@ -22,6 +23,19 @@ const renterSchema = new mongoose.Schema({
     required: "Email is required",
     match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/],
   },
+  auth0_sub: {
+    type: String,
+    min: [4, "Too shart. Min is 4"],
+    max: [64, "Too long. Max is 64"],
+    unique: true,
+    lowercase: true,
+    required: "auth0_sub is required",
+  },
+  revenue: Number,
+  stripeCustomerId: String,
+  bookings: [{ type: Schema.Types.ObjectId, ref: "Booking" }],
 });
+
+//https://community.auth0.com/t/is-256-a-safe-max-length-for-a-user-id/34040/9
 
 module.exports = mongoose.model("Renter", renterSchema);

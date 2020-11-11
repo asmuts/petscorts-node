@@ -53,7 +53,7 @@ describe("getCitiesForPartialName", () => {
     var response = httpMocks.createResponse();
     await cityController.getCitiesForPartialName(request, response);
     var result = response._getJSONData();
-    console.log(result);
+    //console.log(result);
     expect(result.errors[0].title).toBe("City Error");
     expect(result.errors[0].detail).toMatch(/New Y/);
     expect(response.statusCode).toBe(422);

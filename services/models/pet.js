@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const Schema = mongoose.Schema;
 
 // TODO add in unavailable days
@@ -9,16 +8,23 @@ const petSchema = new Schema({
   name: {
     type: String,
     required: true,
-    max: [128, "Too long. Max is 128 chars."],
+    maxlength: [128, "Too long. Max is 128 chars."],
   },
   city: { type: String, required: true, lowercase: true },
   street: {
     type: String,
     required: true,
     lowercase: true,
-    min: [4, "Too short. Min is 4 cars."],
+    minlength: [4, "Too short. Min is 4 cars."],
   },
-  state: { type: String, required: true, uppercase: true, min: 2, max: 2 },
+  state: {
+    type: String,
+    required: true,
+    uppercase: true,
+    minlength: 2,
+    // note, this is case sensitive with a lowercase l!
+    maxlength: [2, "Use state code, not name"],
+  },
   species: { type: String, required: true, lowercase: true },
   breed: { type: String, required: false, lowercase: true },
   images: [
@@ -31,20 +37,12 @@ const petSchema = new Schema({
   description: { type: String, required: true },
   dailyRentalRate: Number,
   createdAt: { type: Date, default: Date.now },
-  owner: {
-    type: new mongoose.Schema({
-      _id: { type: Schema.Types.ObjectId, ref: "Owner" },
-      fullname: {
-        type: String,
-        required: true,
-      },
-    }),
-    required: true,
-  },
+  owner: { type: Schema.Types.ObjectId, ref: "Owner" },
   location: {
     type: { type: String },
     coordinates: [],
   },
+  bookings: [{ type: Schema.Types.ObjectId, ref: "Booking" }],
 });
 
 petSchema.index({ location: "2dsphere" });

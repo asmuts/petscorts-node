@@ -4,6 +4,7 @@ const ownerService = require("../../services/owner-service");
 const geoLocationService = require("../../services/location/geo-location-service");
 const { removeImageFromS3 } = require("../../services/image-upload-service-s3");
 const errorUtil = require("../util/error-util");
+const jsu = require("../util/json-style-util");
 const { getPetDataFromRequest } = require("./util/pet-data-util");
 
 //require("request").debug = true;
@@ -25,10 +26,10 @@ exports.updatePet = async function (req, res) {
 
 async function updateOrAddPet(req, res) {
   const petData = getPetDataFromRequest(req);
-  const { error } = petService.validatePet(petData);
+  let { error } = petService.validatePet(petData);
   if (error) {
-    winston.info("req.body.name = " + req.body.name);
-    winston.info("Error with petData: " + petData);
+    //winston.info("req.body.name = " + req.body.name);
+    winston.info("PetController. Error with petData: " + petData);
     return errorUtil.errorRes(res, 400, "Pet error", error.details[0].message);
   }
 
@@ -38,30 +39,37 @@ async function updateOrAddPet(req, res) {
     winston.info(`Couldn't find owner for id: ${ownerId}`);
     return errorUtil.errorRes(res, 400, "Invalid owner", ownerId);
   }
-  petData.ownerName = owner.fullname;
 
   // I might have to get the geocode before insert
   // since the field is indexed.
   await addGeolocationToPetData(petData);
 
-  let result = {};
+  let result;
   if (petData.petId) {
-    result = await petService.updatePet(petData);
+    let { pet, err } = await petService.updatePet(petData);
+    result = pet;
+    error = err;
   } else {
-    result = await addPetAndAssociateOwner(petData);
+    let { pet, err } = await addPetAndAssociateOwner(petData);
+    result = pet;
+    error = err;
   }
 
-  return res.json(result);
+  if (error)
+    errorUtil.errorRes(res, 422, "Pet error", error.details[0].message);
+  return res.json(jsu.payload(result));
 }
 
 async function addPetAndAssociateOwner(petData) {
-  const newPetId = await petService.addPet(petData);
-  winston.debug(`Added new pet: ${newPetId}`);
+  const { pet, err } = await petService.addPet(petData);
+  if (err) return { err };
+  if (pet) {
+    const newPetId = pet._id;
+    winston.info(`Added new pet: ${newPetId}`);
 
-  await ownerService.addPetToOwner(petData.ownerId, newPetId);
-  // TODO don't deal with the response.
-  // just add the petId to the petData
-  return { petId: newPetId };
+    await ownerService.addPetToOwner(petData.ownerId, newPetId);
+    return { pet };
+  }
 }
 
 async function addGeolocationToPetData(petData) {

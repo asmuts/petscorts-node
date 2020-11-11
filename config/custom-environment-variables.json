@@ -3,5 +3,6 @@
   "mongoDBPassword": "petscorts_mongoDBPassword",
   "mongoDBUser": "petscorts_mongoDBUser",
   "aws_access_key_id": "petscorts_aws_access_key_id",
-  "aws_secret_access_key": "petscorts_aws_secret_access_key"
+  "aws_secret_access_key": "petscorts_aws_secret_access_key",
+  "stripe_secret_key": "petscorts_stripe_secret_key"
 }
