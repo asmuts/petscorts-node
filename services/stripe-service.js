@@ -10,7 +10,7 @@
 const config = require("config");
 const stripe = require("stripe")(config.get("stripe_secret_key"));
 
-// TODO MOVE TO STRIPE SERVICE!
+// Creates a token to reference a payment method.
 exports.createStripeCustomer = async (renter, token) => {
   try {
     const customer = await stripe.customers.create({

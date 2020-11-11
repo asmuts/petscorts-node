@@ -41,7 +41,7 @@ exports.createPayment = async (
   });
 
   try {
-    const savedPayment = await payment.save();
+    const savedPayment = await payment.save(session);
     return { payment: savedPayment };
   } catch (err) {
     return { err: err.message };

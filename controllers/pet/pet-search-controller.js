@@ -5,6 +5,7 @@ const cityService = require("../../services/location/city-service");
 const geoLocationService = require("../../services/location/geo-location-service");
 const petService = require("../../services/pet-service");
 const errorUtil = require("../util/error-util");
+const jsu = require("../util/json-style-util");
 const { getStateCodeForNameIfNeeded } = require("./util/pet-data-util");
 
 exports.getPets = async function (req, res) {
@@ -20,12 +21,13 @@ exports.getPetsForOwner = async function (req, res) {
 
 exports.getPetById = async function (req, res) {
   const petId = req.params.id;
-  const pet = await petService.getPetById(petId);
+  const { pet, err } = await petService.getPetById(petId);
 
   if (!pet)
     return errorUtil.errorRes(res, 422, "Pet Error", `No pet for id ${petId}`);
+  if (err) return errorUtil.errorRes(res, 500, "Pet Error", err);
 
-  res.json(pet);
+  res.json(jsu.payload(pet));
 };
 
 exports.getPetsInCity = async function (req, res) {

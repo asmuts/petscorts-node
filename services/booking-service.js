@@ -1,7 +1,7 @@
 const winston = require("winston");
 const Booking = require("./models/booking");
-const mongoose = require("mongoose");
-const moment = require("moment");
+//const mongoose = require("mongoose");
+//const moment = require("moment");
 
 const STATUS = {
   PENDING: "PENDING",
@@ -9,9 +9,8 @@ const STATUS = {
   CANCELLED: "CANCELLED",
 };
 
+// crude - TODO make configurable
 const CUSTOMER_SHARE = 0.8;
-
-// rough draft partially based on an example
 
 // For testing. Limit the max results for safety.
 exports.getAllBookings = async function () {
@@ -20,7 +19,7 @@ exports.getAllBookings = async function () {
     winston.info(`Found ${bookings.length} bookings.`);
     return { bookings };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err);
     return { err: err.message };
   }
 };
@@ -31,7 +30,7 @@ exports.getBookingById = async function (bookingId) {
     winston.info(`Booking for ID: ${bookingId} - ${booking}`);
     return { booking };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err);
     return { err: err.message };
   }
 };
@@ -45,7 +44,7 @@ exports.getBookingById = async function (bookingId) {
 // owner: { type: Schema.Types.ObjectId, ref: "Owner" },
 // pet: { type: Schema.Types.ObjectId, ref: "Pet" },
 // status: { type: String, enum: ["PENDING", "CONFIRMED"] default: "PENDING" },
-exports.addBooking = async function (bookingData) {
+exports.addBooking = async function (bookingData, session) {
   let booking = new Booking({
     startAt: bookingData.startAt,
     endAt: bookingData.endAt,
@@ -59,10 +58,10 @@ exports.addBooking = async function (bookingData) {
     //status: bookingData.status,
   });
   try {
-    await booking.save();
+    await booking.save(session);
     return { booking };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err);
     return { err: err.message };
   }
 };
@@ -75,13 +74,13 @@ exports.getBookingsForOwner = async function (ownerId) {
     winston.info(`Found ${bookings.length} bookings for owner - ${ownerId}`);
     return { bookings };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err);
     return { err: err.message };
   }
 };
 
 //  enum: ["PENDING", "ACTIVE", "CANCELLED"],
-exports.updateBookingStatus = async function (bookingId, status) {
+exports.updateBookingStatus = async function (bookingId, status, session) {
   try {
     const booking = await Booking.findByIdAndUpdate(
       bookingId,
@@ -90,11 +89,12 @@ exports.updateBookingStatus = async function (bookingId, status) {
       },
       {
         new: true,
+        session,
       }
     ).exec();
     return { booking };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err);
     return { err: err.message };
   }
 };

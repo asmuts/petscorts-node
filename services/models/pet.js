@@ -8,16 +8,23 @@ const petSchema = new Schema({
   name: {
     type: String,
     required: true,
-    max: [128, "Too long. Max is 128 chars."],
+    maxlength: [128, "Too long. Max is 128 chars."],
   },
   city: { type: String, required: true, lowercase: true },
   street: {
     type: String,
     required: true,
     lowercase: true,
-    min: [4, "Too short. Min is 4 cars."],
+    minlength: [4, "Too short. Min is 4 cars."],
   },
-  state: { type: String, required: true, uppercase: true, min: 2, max: 2 },
+  state: {
+    type: String,
+    required: true,
+    uppercase: true,
+    minlength: 2,
+    // note, this is case sensitive with a lowercase l!
+    maxlength: [2, "Use state code, not name"],
+  },
   species: { type: String, required: true, lowercase: true },
   breed: { type: String, required: false, lowercase: true },
   images: [

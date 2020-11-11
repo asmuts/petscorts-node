@@ -3,18 +3,23 @@ const request = require("supertest");
 const Renter = require("../../../services/models/renter");
 
 describe("/api/v1/renters", () => {
-  beforeEach(() => {
+  beforeAll(() => {
     app = require("../../../index");
   });
-  afterEach(async () => {
+  afterAll(async () => {
     await Renter.remove({});
   });
 
   describe("GET /", () => {
     it("should return all renters", async () => {
       await Renter.collection.insertMany([
-        { username: "renter1", fullname: "name 1", email: "renter1@own.com" },
-        { username: "renter2", fullname: "name 2", email: "renter2@own.com" },
+        { username: "renter1", fullname: "name 1", email: "renter-int1@.com" },
+        {
+          username: "renter2",
+          fullname: "name 2",
+          email: "renter-int2@own.com",
+          auth0_sub: "auth0_sub-int2",
+        },
       ]);
 
       const res = await request(app).get("/api/v1/renters");
@@ -32,6 +37,7 @@ describe("/api/v1/renters", () => {
         username: "renter3",
         fullname: "name 3",
         email: "renter3@own.com",
+        auth0_sub: "auth0_sub3",
       });
       await newRenter.save();
 

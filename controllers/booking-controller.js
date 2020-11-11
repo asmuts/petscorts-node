@@ -4,6 +4,7 @@ const petService = require("../services/pet-service");
 const paymentService = require("../services/payment-service");
 const renterService = require("../services/renter-service");
 const stripeService = require("../services/stripe-service");
+const transactionHelper = require("../services/util/transaction-helper");
 const errorUtil = require("./util/error-util");
 const moment = require("moment");
 
@@ -49,15 +50,19 @@ exports.createBooking = function (req, res) {
           "Cannot process payment.")
         }
 
+        ////////////////////////
+        // All the operations below should be in a transaction
+        // TODO refactor to abort and return an error
+        const session = await transactionHelper.startTransaction();
+
         // can't go on if this fails.
-        const { renter, err: errRenter } = await renterService.updateSwipeCustomerId(user._id, customer.id);
+        const { renter, err: errRenter } = await renterService.updateSwipeCustomerId(renter._id, customer.id, session);
         if (errRenter) {
           return errorUtil.errorRes( res, 422, "Payment error", errRenter)
         }
 
-        // Consider refactoring what follows to use some transaction support
         const { payment, errPayment } = await paymentService.createPayment( customer.id,
-          booking_id, renter._id, foundPet.owner_id, paymentToken);
+          booking_id, renter._id, foundPet.owner_id, paymentToken, session);
         if (errPayment) {
           return errorUtil.errorRes( res, 422, "Payment error", errPayment)
         }
@@ -75,16 +80,18 @@ exports.createBooking = function (req, res) {
 
         // save booking
         const errors = [];
-        const { booking, err: errBooking } = await bookingService.addBooking(bookingData);
+        const { booking, err: errBooking } = await bookingService.addBooking(bookingData, session);
         if ( errBooking ) errors.push(errBooking);
 
         // update pet
-        const { pet: petUpdated, err: errPet } = petService.addBookingToPet(foundPet._id, booking._id);
+        const { pet: petUpdated, err: errPet } = petService.addBookingToPet(foundPet._id, booking._id, session);
         if ( errPet ) errors.push(errPet);
 
         // update renter
-        const { renter: renterUpdated, err: errRenter } = renterService.addBookingToRenter(renter._id, booking._id)
-        if ( errRenter ) errors.push(errRenter);
+        const { renter: renterUpdated, err: errRenter } = renterService.addBookingToRenter(renter._id, booking._id, session)
+        if ( errRenter ) errors.push(errRenter)
+
+        await transactionHelper.commitTransaction(session);
 
         // TODO should I return just an error response?
         return res.json({ startAt: startAt, endAt: endAt, errors });

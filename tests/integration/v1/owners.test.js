@@ -3,27 +3,37 @@ const request = require("supertest");
 const Owner = require("../../../services/models/owner");
 
 describe("/api/v1/owners", () => {
-  beforeEach(() => {
+  beforeAll(() => {
     // need to run the server on a different port than nodemon
     app = require("../../../index");
   });
-  afterEach(async () => {
+  afterAll(async () => {
     await Owner.remove({});
   });
 
   describe("GET /", () => {
     it("should return all owners", async () => {
       await Owner.collection.insertMany([
-        { username: "owner1", fullname: "name 1", email: "owner1@own.com" },
-        { username: "owner2", fullname: "name 2", email: "owner2@own.com" },
+        {
+          username: "owner1",
+          fullname: "name 1",
+          email: "owner-int1@own.com",
+          auth0_sub: "auth0_sub1",
+        },
+        {
+          username: "owner2",
+          fullname: "name 2",
+          email: "owner-int2@own.com",
+          auth0_sub: "auth0_sub2",
+        },
       ]);
 
       const res = await request(app).get("/api/v1/owners");
 
       expect(res.status).toBe(200);
-      expect(res.body.length).toBe(2);
-      expect(res.body.some((o) => o.username === "owner1")).toBeTruthy();
-      expect(res.body.some((o) => o.username === "owner2")).toBeTruthy();
+      expect(res.body.data.length).toBe(2);
+      expect(res.body.data.some((o) => o.username === "owner1")).toBeTruthy();
+      expect(res.body.data.some((o) => o.username === "owner2")).toBeTruthy();
     });
   });
 
@@ -32,15 +42,15 @@ describe("/api/v1/owners", () => {
       const newOwner = new Owner({
         username: "owner3",
         fullname: "name 3",
-        email: "owner3@own.com",
+        email: "owner-int3@own.com",
       });
       await newOwner.save();
 
       const res = await request(app).get(`/api/v1/owners/${newOwner._id}`);
 
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty("fullname", newOwner.fullname);
-      expect(res.body.username).toBe("owner3");
+      expect(res.body.data).toHaveProperty("fullname", newOwner.fullname);
+      expect(res.body.data.username).toBe("owner3");
     });
 
     it("should return 404 if invalid id is passed", async () => {

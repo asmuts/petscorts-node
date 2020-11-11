@@ -40,12 +40,22 @@ exports.addRenter = async function (renterData) {
 
 // if the caller has the entire renter record
 // just use the standard update
-exports.updateSwipeCustomerId = async function (renterId, swipeCustomerId) {
+exports.updateSwipeCustomerId = async function (
+  renterId,
+  swipeCustomerId,
+  session
+) {
   try {
-    const renter = await Renter.findByIdAndUpdate(renterId, {
-      stripeCustomerId: swipeCustomerId,
-      new: true,
-    }).exec();
+    const renter = await Renter.findByIdAndUpdate(
+      renterId,
+      {
+        stripeCustomerId: swipeCustomerId,
+      },
+      {
+        new: true,
+        session,
+      }
+    ).exec();
     return { renter };
   } catch (err) {
     winston.error(err);
@@ -53,10 +63,10 @@ exports.updateSwipeCustomerId = async function (renterId, swipeCustomerId) {
   }
 };
 
-exports.addBookingToRenter = async function (renterId, bookingId) {
+exports.addBookingToRenter = async function (renterId, bookingId, session) {
   try {
     const renter = await Renter.findById(renterId);
-    renter.bookings.push(bookingId);
+    renter.bookings.push(bookingId, { session });
     return { renter };
   } catch (err) {
     winston.error(err);

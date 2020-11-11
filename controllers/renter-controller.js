@@ -3,7 +3,7 @@ const renterService = require("../services/renter-service");
 const errorUtil = require("./util/error-util");
 
 exports.getAllRenters = async function (req, res) {
-  const renters = await renterService.getAllOwnwers();
+  const renters = await renterService.getAllRenters();
   res.json(renters);
 };
 

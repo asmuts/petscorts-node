@@ -9,8 +9,8 @@
   "scripts": {
     "test": "jest --watchAll",
     "unit": "jest unit/* --watchAll",
-    "integration": "jest integration/*",
-    "services": "jest services/*",
+    "integration": "jest integration/* --runInBand",
+    "services": "jest services/* --runInBand",
     "start": "node server.js"
   },
   "keywords": [],
@@ -24,6 +24,7 @@
     "express": "^4.17.1",
     "express-async-errors": "^3.1.1",
     "express-jwt": "^6.0.0",
+    "express-unless": "^0.5.0",
     "joi": "^17.2.1",
     "joi-objectid": "^3.0.1",
     "joi-password-complexity": "^4.2.1",

@@ -14,4 +14,6 @@ module.exports = jwt({
   audience: config.get("AUTH0_API_IDENTIFIER"),
   issuer: `https://${config.get("AUTH0_DOMAIN")}/`,
   algorithms: ["RS256"],
+}).unless(() => {
+  return !config.get("useAuthMW");
 });
