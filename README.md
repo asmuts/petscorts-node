@@ -1,7 +1,7 @@
 ## petscorts-node
 Node.js API for Petscorts
 
-This project holds the initial backend for Petscorts.
+This project holds the initial backend for [Petscorts.com](https://www.petscorts.com)
 
 I plan on splitting out the location services into a separate microservice. And I'll likely build out some other services in Java.
 
@@ -9,7 +9,7 @@ The backend is deployed to AWS Elastic Beanstalk.
 
 The database is MongoDB's Atlas. 
 
-The front end is a Next.js project (petscorts-next). It's deployed to Vercel.
+The front end is a Next.js project -- [petscorts-next](https://github.com/asmuts/petscorts-next). It's deployed to Vercel.
 
 Authentication is done through Auth0.
 
@@ -32,3 +32,5 @@ I'm moving the API to look more like Google's JSON guide.
 The API endpoints are REST-like. I provide more options than a typical REST API.
 
 #Note: Petscorts is a sample project. 
+
+
