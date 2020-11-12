@@ -9,6 +9,7 @@ const STATUS = {
   PENDING: "PENDING",
   DECLINED: "DECLINED",
   PAID: "PAID",
+  REFUNDED: "REFUNDED"
 };
 
 exports.getPaymentById = async function (paymentId) {
@@ -22,8 +23,10 @@ exports.getPaymentById = async function (paymentId) {
   }
 };
 
+// Saving the entire swipe customer records and the id
+// for lookup
 exports.createPayment = async (
-  customerId,
+  stripeCustomer,
   bookingId,
   renterId,
   ownerId,
@@ -34,7 +37,8 @@ exports.createPayment = async (
   const payment = new Payment({
     renter: renterId,
     owner: ownerId,
-    fromStripeCustomerId: customerId,
+    stripeCustomerId: stripeCustomer.id,
+    stripeCustomer: stripeCustomer,
     booking,
     tokenId: token.id,
     amount: booking.totalPrice * 100 * CUSTOMER_SHARE,
@@ -85,13 +89,35 @@ exports.declinePayment = function (paymentId) {
   }
 };
 
-exports.setPaymentToPaid = function (paymentId, stripeChargeId) {
+// Saving the entire charge record and the id for lookup
+exports.setPaymentToPaid = function (paymentId, stripeCharge) {
   try {
     const payment = await Payment.findByIdAndUpdate(
       paymentId,
       {
         status: STATUS.PAID,
-        charge, stripeChargeId
+        stripCharge: stripeCharge,
+        stripeChargeId: stripeCharge.id
+      },
+      {
+        new: true,
+      }
+    ).exec();
+    return { payment };
+  } catch (err) {
+    winston.error(err);
+    return { err: err.message };
+  }
+};
+
+// Saving the entire charge record and the id for lookup
+exports.setPaymentToRefunded = function (paymentId, stripeRefund) {
+  try {
+    const payment = await Payment.findByIdAndUpdate(
+      paymentId,
+      {
+        status: STATUS.REFUNDED,
+        stripeRefund: stripeRefund.id
       },
       {
         new: true,

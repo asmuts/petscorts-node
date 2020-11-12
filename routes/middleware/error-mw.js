@@ -1,8 +1,12 @@
 const winston = require("winston");
+// TODO move the errorUtil somewhere common
+const errorUtil = require("../../controllers/util/error-util");
 
 let code = 500;
 let title = "Server Error";
 
+// "express-async-errors" will invoke this.
+// https://github.com/davidbanham/express-async-errors
 module.exports = function (err, req, res, next) {
   winston.log("error", "ErrorMW: " + err.message);
 
@@ -11,13 +15,5 @@ module.exports = function (err, req, res, next) {
     title = "UnauthorizedError";
   }
 
-  const json = {
-    errors: [
-      {
-        title: title,
-        detail: err.message,
-      },
-    ],
-  };
-  res.status(code).send(json);
+  return errorUtil.errorRes(res, code, title, err.message);
 };

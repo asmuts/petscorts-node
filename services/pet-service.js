@@ -112,7 +112,7 @@ exports.addImageToPet = async function (petId, imageUrl) {
 
     pet.images.push({ url: imageUrl });
     winston.info(`PetService. Adding image to pet ${petId}`);
-    pet.save();
+    await pet.save();
     return { pet };
   } catch (err) {
     winston.log("error", err);

@@ -3,15 +3,18 @@ const Schema = mongoose.Schema;
 
 const paymentSchema = new Schema({
   renter: { type: Schema.Types.ObjectId, ref: "Renter" },
-  renterStripeCustomerId: String,
+  stripeCustomerId: String,
+  stripeCustomer: Schema.Types.Mixed,
   owner: { type: Schema.Types.ObjectId, ref: "Owner" },
   booking: { type: Schema.Types.ObjectId, ref: "Booking" },
   amount: Number,
   tokenId: String,
-  charge: Schema.Types.Mixed,
+  stripeChageId: String,
+  stripeCharge: Schema.Types.Mixed,
+  stripeRefundId: String,
   status: {
     type: String,
-    enum: ["PENDING", "DECLINED", "PAID"],
+    enum: ["PENDING", "DECLINED", "PAID", "REFUNDED"],
     default: "PENDING",
   },
 });
