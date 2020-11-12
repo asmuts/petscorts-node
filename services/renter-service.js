@@ -65,8 +65,11 @@ exports.updateSwipeCustomerId = async function (
 
 exports.addBookingToRenter = async function (renterId, bookingId, session) {
   try {
-    const renter = await Renter.findById(renterId);
-    renter.bookings.push(bookingId, { session });
+    const renter = await Renter.findByIdAndUpdate(
+      renterId,
+      { $push: { bookings: bookingId } },
+      { session, new: true }
+    ).exec();
     return { renter };
   } catch (err) {
     winston.error(err);

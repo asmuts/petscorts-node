@@ -21,6 +21,8 @@ describe("/booking-service", () => {
     await Renter.remove({});
     await Pet.remove({});
     await Booking.remove({});
+    const app = express();
+    app.close();
   });
 
   async function setupOwnerRenterPet() {

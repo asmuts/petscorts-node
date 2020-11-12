@@ -70,9 +70,10 @@ exports.addOwner = async function (req, res) {
     return returnOtherError(res, 422, "Email is in use.");
   }
 
-  const newOwnerId = await ownerService.addOwner(ownerData);
-  winston.info(`Added new owner: ${newOwnerId}`);
-  res.json({ ownerId: newOwnerId });
+  const { owner: newOwner, err } = await ownerService.addOwner(ownerData);
+  if (err) return returnOtherError(res, 500, err);
+  winston.info(`Added new owner: ${newOwner}`);
+  res.json(jsu.payload(nweOwner));
 };
 
 exports.updateOwner = async function (req, res) {

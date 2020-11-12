@@ -4,20 +4,20 @@ const Schema = mongoose.Schema;
 const renterSchema = new mongoose.Schema({
   username: {
     type: String,
-    min: [4, "Too short. Min is 4"],
-    max: [32, "Too long. Max is 32"],
+    minlength: [4, "Too short. Min is 4"],
+    maxlength: [32, "Too long. Max is 32"],
   },
   fullname: {
     type: String,
     required: true,
-    min: [4, "Too short. Min is 4"],
-    max: [100, "Too long. Max is 100"],
+    minlength: [4, "Too short. Min is 4"],
+    maxlength: [100, "Too long. Max is 100"],
     trim: true,
   },
   email: {
     type: String,
-    min: [4, "Too short. Min is 4"],
-    max: [52, "Too long. Max is 52"],
+    minlength: [4, "Too short. Min is 4"],
+    maxlength: [52, "Too long. Max is 52"],
     unique: true,
     lowercase: true,
     required: "Email is required",
@@ -25,8 +25,8 @@ const renterSchema = new mongoose.Schema({
   },
   auth0_sub: {
     type: String,
-    min: [4, "Too shart. Min is 4"],
-    max: [64, "Too long. Max is 64"],
+    minlength: [4, "Too shart. Min is 4"],
+    maxlength: [64, "Too long. Max is 64"],
     unique: true,
     lowercase: true,
     required: "auth0_sub is required",

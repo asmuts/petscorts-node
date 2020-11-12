@@ -54,8 +54,8 @@ describe("getCitiesForPartialName", () => {
     await cityController.getCitiesForPartialName(request, response);
     var result = response._getJSONData();
     //console.log(result);
-    expect(result.errors[0].title).toBe("City Error");
-    expect(result.errors[0].detail).toMatch(/New Y/);
+    expect(result.error.title).toBe("City Error");
+    expect(result.error.message).toMatch(/New Y/);
     expect(response.statusCode).toBe(422);
   });
 });

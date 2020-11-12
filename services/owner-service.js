@@ -4,24 +4,26 @@ const Owner = require("./models/owner");
 const mongoose = require("mongoose");
 
 // For testing. Limit the max results for safety.
+// prod block mw on route
 exports.getAllOwners = async function () {
   try {
     const owners = await Owner.find().limit(200).exec();
     winston.debug(`OwnerService. Found ${owners.length} owners.`);
     return { owners };
   } catch (err) {
-    winston.log("error", err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
 
+// null if not found. The controller will return a 404
 exports.getOwnerById = async function (ownerId) {
   try {
     const owner = await Owner.findById(ownerId);
     winston.debug(`OwnerService. Owner for ID: ${ownerId} - ${owner}`);
     return { owner };
   } catch (err) {
-    winston.log("error", err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -32,7 +34,7 @@ exports.getOwnerByIdWithPets = async function (ownerId) {
     winston.debug(`OwnerService. Owner for ID: ${ownerId} - ${owner}`);
     return { owner };
   } catch (err) {
-    winston.log("error", err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -43,7 +45,7 @@ exports.getOwnerByEmail = async function (email) {
     winston.debug(`OwnerService. owner for email: ${email} - ${owner}`);
     return { owner };
   } catch (err) {
-    winston.log("error", err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -59,7 +61,7 @@ exports.getOwnerByAuth0Sub = async function (auth0_sub) {
     winston.info(`OwnerService. owner for auth0_sub: ${auth0_sub} - ${owner}`);
     return { owner };
   } catch (err) {
-    winston.log("error", err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -71,11 +73,11 @@ exports.getOwnerByAuth0SubWithPets = async function (auth0_sub) {
   try {
     const owner = await Owner.findOne({ auth0_sub }).populate("pets").exec();
     winston.info(
-      `OwnerService. Found owner for auth0_sub: ${auth0_sub} - ${owner}`
+      `OwnerService. Found owner for auth0_sub with pets: ${auth0_sub} - ${owner}`
     );
     return { owner };
   } catch (err) {
-    winston.log("error", err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -83,66 +85,92 @@ exports.getOwnerByAuth0SubWithPets = async function (auth0_sub) {
 ///////////////////////////////////////////////////////////////
 // WRITE METHODS
 
+// Create called after first login
 exports.addOwner = async function (ownerData) {
-  let owner = new Owner({
-    username: ownerData.username,
-    fullname: ownerData.fullname,
-    email: ownerData.email,
-    auth0_sub: ownerData.auth0_sub,
-  });
-  await owner.save();
-  return owner._id;
-};
-
-exports.removePetFromOwner = async function (ownerId, petId) {
-  const owner = await Owner.findById(ownerId);
-
-  // mondg ids are objects, they can't be compared to strings with ===
-  const found = owner.pets.find((pet) => pet._id.equals(petId));
-  winston.info("Pet " + found);
-
-  if (found) {
-    owner.pets.pull({ _id: petId });
-    winston.debug(`Removing pet from owner ${petId}`);
-    owner.save();
-  } else {
-    winston.info(`No such pet to remove from owner: ${petId}`);
+  try {
+    let owner = new Owner({
+      username: ownerData.username,
+      fullname: ownerData.fullname,
+      email: ownerData.email,
+      auth0_sub: ownerData.auth0_sub,
+    });
+    await owner.save();
+    return { owner };
+  } catch (err) {
+    winston.log("error", err.message);
+    return { err: err.message };
   }
-  return owner;
 };
 
-exports.addPetToOwner = async function (ownerId, petId) {
+// Return error is pet is not found.
+// Problem: the caller will think this is a 500 and not a 422
+// TODO consider returning the image and not the owner
+// A null would indicate no image???
+exports.removePetFromOwner = async function (ownerId, petId) {
   try {
     const owner = await Owner.findById(ownerId);
-    owner.pets.push(petId);
-    await owner.save();
+
+    // mondg ids are objects, they can't be compared to strings with ===
+    const found = owner.pets.find((pet) => pet._id.equals(petId));
+    if (found) {
+      owner.pets.pull({ _id: petId });
+      winston.info(`Removing pet from owner ${petId}`);
+      await owner.save();
+    } else {
+      throw new Error(`No such pet to remove from owner: ${petId}`);
+    }
+    return { owner };
+  } catch (err) {
+    winston.log("error", err.message);
+    return { err: err.message };
+  }
+};
+
+// Push the pet reference into the list of pets
+exports.addPetToOwner = async function (ownerId, petId) {
+  try {
+    const owner = await Owner.findByIdAndUpdate(
+      ownerId,
+      { $push: { pets: petId } },
+      { new: true }
+    ).exec();
     winston.info(`Adding pet to owner ${petId}`);
     return { owner };
   } catch (err) {
-    winston.log("error", err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
 
 // TODO distinguish between put and patch
 exports.updateOwner = async function (ownerData) {
-  let owner = {
-    username: ownerData.username,
-    fullname: ownerData.fullname,
-    email: ownerData.email,
-    auth0_sub: ownerData.auth0_sub,
-  };
-  const result = await Owner.findByIdAndUpdate(ownerData.ownerId, owner, {
-    new: true,
-  }).exec();
-  winston.debug("Updated owner " + result);
-  return result;
+  try {
+    let owner = {
+      username: ownerData.username,
+      fullname: ownerData.fullname,
+      email: ownerData.email,
+      auth0_sub: ownerData.auth0_sub,
+    };
+    const result = await Owner.findByIdAndUpdate(ownerData.ownerId, owner, {
+      new: true,
+    }).exec();
+    winston.debug("Updated owner " + result);
+    return { owner: result };
+  } catch (err) {
+    winston.log("error", err.message);
+    return { err: err.message };
+  }
 };
 
 exports.deleteOwner = async function (ownerId) {
-  winston.info(`Deleting owner id: ${ownerId}`);
-  const owner = await Owner.findByIdAndRemove(ownerId);
-  return owner;
+  try {
+    winston.info(`Deleting owner id: ${ownerId}`);
+    const owner = await Owner.findByIdAndRemove(ownerId);
+    return { owner };
+  } catch (err) {
+    winston.log("error", err.message);
+    return { err: err.message };
+  }
 };
 
 ///////////////////////////////////////////////////////////////

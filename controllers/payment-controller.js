@@ -4,6 +4,7 @@ const petService = require("../services/pet-service");
 const paymentService = require("../services/payment-service");
 const stripeService = require("../services/stripe-service");
 const errorUtil = require("./util/error-util");
+const transactionHelper = require("../services/util/transaction-helper");
 
 exports.getPendingPayments = function (req, res) {
   // TODO take this as a param
@@ -27,6 +28,8 @@ exports.getPendingPayments = function (req, res) {
 Mark the booking status as cancelled.
 Set the payment status to declined.
 This is called when an owner declines a booking.
+
+TODO clean this up. Add transaction support.
 */
 exports.declinePayment = function (req, res) {
   const paymentId = req.params.paymentId;
@@ -71,13 +74,20 @@ exports.declinePayment = function (req, res) {
 };
 
 /*
-  Transactionless updating paymnet records!!!
-  -- TODO consider refactoring to take advantage of the new transaction
+ Refactored to take advantage of the new transaction
   -- features in mongoose as of 8/2020
+
   The most important record is that of payment.
-  Bail if it fails.  There's no going back at that point. (unless refund)
-  Otherwise, get as much done as we can.
-  Gather any errors updating the renter, booking, or payment collections
+  Bail if it fails.
+  It it succeeds, update the database.
+  If there is an erorr, rollback the transaction and try to refund.
+
+  Note: This entire process needs to be more robust. It should be done
+  on a different microservice, probably in Java. And we need to be able
+  to queue up retries.  Right now I'm just trying 3 times to issue a
+  refund. It that fails, I just appologize.  That's not acceptable in a
+  a real application.
+
 */
 exports.confirmPayment = function (req, res) {
   const paymentId = req.params.paymentId;
@@ -86,34 +96,60 @@ exports.confirmPayment = function (req, res) {
     return errorUtil.errorRes(res, 422, "Payment error", err);
   }
 
+  // Might also want to try if it is REFUNDED
   if ( payment.status !== paymentService.STATUS.PENDING) {
     return errorUtil.errorRes(res, 422, "Payment error", "Payment status was not pending.");
   }
 
-  // middleware should check
-  //   user.id === foundPayment.renter.id
+  // middleware should check  user.id === foundPayment.renter.id
   const booking = payment.booking;
 
     // call stripe service. Can't go on if this fails.
-  const { charge, err: errorStripe } = await stripeService.charges(booking.totalPrice * 100, payment.fromStripeCustomerId );
+    // Total price in dollars and cents, the service will *100
+  const { charge, err: errorStripe } = await stripeService.charge(booking.totalPrice,  payment.customer.id, payment.customer.default_source );
   if (err) {
      return errorUtil.errorRes(res, 422, "Payment error", errorStripe);
   }
 
+  ///////////////////////////////////////////////////////////////
+  // All the operations below should be in a transaction
+  // Fail at end if errors, refund, and return an error
+  const session = await transactionHelper.startTransaction();
+
   // TODO need some kind of transaction
   const errors = [];
-  const { paymentUpdated, err: errorPaid } = paymentService.setPaymentToPaid(paymentId, charge )
+  const { paymentUpdated, err: errorPaid } = paymentService.setPaymentToPaid(paymentId, charge, session )
   if (errorPaid) errors.push( errorPaid );
-
 
   const { booking, err: errorBooking } = bookingService.updateBookingStatus(
     payment.booking._id,
-    bookingService.STATUS.ACTIVE
+    bookingService.STATUS.ACTIVE, session
   );
   if (errorBooking) errors.push( errorBooking );
 
-  const { renter, err: errorRenter } = renterService.addToRevenue( payment.renter._id, paymentUpdated.amount );
+  const { renter, err: errorRenter } = renterService.addToRevenue( payment.renter._id, paymentUpdated.amount, session );
   if (errorRenter) errors.push( errorRenter );
 
-  return res.json({ status: "PAID", errors });
+  // ABORT AND REFUND IF NEEDED
+  if ( errors.length > 0 ){ // BAD NEWS
+    await transactionHelper.abortTransaction(session);
+    return await refundCharge(res, charge, payment);
+  }
+
+  await transactionHelper.commitTransaction(session);
+  ////////////////////////////////////////
+
+  return res.json({ status: "PAID" });
 };
+
+// Refund and store the refundId on the payment record
+async function refundCharge(res, charge, payment){
+  const {refund, err: errRefund} = await stripeService.refund( charge.id );
+  if ( errRefund ) { // REALLY BAD NEWS!!!! The gods frown upon us.
+    return errorUtil.errorRes(res, 422, "Refund error", "Unfortunately there has been an error. Your card has been charged and we were unable to issue a refund. We are working on the problem.");
+  }
+  const {refund, err: errRefunStore } = paymentService.setPaymentToRefunded(payment._id, refund)
+  if(errRefunStore) {
+    return errorUtil.errorRes(res, 422, "Payment error", errRefunStore);
+  }
+}

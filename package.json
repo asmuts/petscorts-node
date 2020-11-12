@@ -7,10 +7,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest --watchAll",
+    "test": "jest --runInBand --coverage",
     "unit": "jest unit/* --watchAll",
-    "integration": "jest integration/* --runInBand",
-    "services": "jest services/* --runInBand",
+    "integration": "jest integration/* --runInBand --detectOpenHandles",
+    "services": "jest services/* --runInBand --detectOpenHandles --watchAll",
     "start": "node server.js"
   },
   "keywords": [],
@@ -38,6 +38,7 @@
     "multer-s3": "^2.9.0",
     "node-cache": "^5.1.2",
     "nodemon": "^2.0.6",
+    "stripe": "^8.121.0",
     "winston": "^3.3.3"
   },
   "devDependencies": {

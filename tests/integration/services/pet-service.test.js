@@ -1,3 +1,5 @@
+const express = require("express");
+
 const Pet = require("../../../services/models/pet");
 const Owner = require("../../../services/models/owner");
 const Renter = require("../../../services/models/renter");
@@ -21,6 +23,8 @@ describe("/pet-service", () => {
     await Renter.remove({});
     await Pet.remove({});
     await Booking.remove({});
+    const app = express();
+    app.close();
   });
 
   async function setupOwner() {
