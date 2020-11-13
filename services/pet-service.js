@@ -2,6 +2,12 @@ const Joi = require("joi");
 const winston = require("winston");
 const Pet = require("../services/models/pet");
 
+const STATUS = {
+  ACTIVE: "ACTIVE",
+  HIDDEN: "HIDDEN",
+  ARCHIVED: "ARCHIVED",
+};
+
 // here for testing purposes.
 exports.getAllPets = async function () {
   const pets = await Pet.find().limit(200).exec();
@@ -24,7 +30,7 @@ exports.getPetById = async function (petId) {
     winston.debug(`PetService. Found pet for ID: ${petId} - ${pet}`);
     return { pet };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -39,7 +45,7 @@ exports.getPetByIdWithOwnerAndBookings = async function (petId) {
     winston.debug(`PetService. Found pet for ID: ${petId} - ${pet}`);
     return { pet };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -48,8 +54,12 @@ exports.getPetByIdWithOwnerAndBookings = async function (petId) {
 exports.getPetsInCityAndState = async function (city, state) {
   let pets = [];
   if (city && state) {
-    const query = { city: city.toLowerCase(), state: state.toUpperCase() };
-    pets = await Pet.find(query).limit(1000).exec();
+    const query = {
+      city: city.toLowerCase(),
+      state: state.toUpperCase(),
+      status: { $nin: ["ARCHIVED", "HIDDEN"] },
+    };
+    pets = await Pet.find(query).limit(1000).lean().exec();
     winston.info(
       `PetService. Found ${pets.length} pets in city ${city} state ${state}.`
     );
@@ -73,7 +83,10 @@ exports.getPetsNearLocation = async function (
         },
       },
     },
-  }).exec();
+    status: { $nin: ["ARCHIVED", "HIDDEN"] },
+  })
+    .lean()
+    .exec();
   winston.info("PetService. Found " + pets.length + " for location");
   return pets;
 };
@@ -194,10 +207,33 @@ exports.removeBookingFromPet = async function (petId, bookingId) {
   }
 };
 
+// A soft delete of a pet.  These will be filtered out of search results.
+// TODO make a method to revive
+exports.archivePet = async function (petId) {
+  winston.info(`PetService. Archiving Pet - id: ${petId}`);
+  try {
+    const pet = await Pet.findByIdAndUpdate(
+      petId,
+      {
+        status: STATUS.ARCHIVED,
+      },
+      {
+        new: true,
+        useFindAndModify: false,
+      }
+    ).exec();
+    winston.info("pet = " + pet);
+    return { pet };
+  } catch (err) {
+    winston.log("error", err.message);
+    return { err: err.message };
+  }
+};
+
 exports.deletePet = async function (petId) {
   try {
     winston.info(`PetService. Deleting Pet - id: ${petId}`);
-    const pet = await Pet.findByIdAndRemove(petId);
+    const pet = await Pet.findByIdAndRemove(petId, { useFindAndModify: false });
     return { pet };
   } catch (err) {
     winston.log("error", err);

@@ -43,6 +43,11 @@ const petSchema = new Schema({
     coordinates: [],
   },
   bookings: [{ type: Schema.Types.ObjectId, ref: "Booking" }],
+  status: {
+    type: String,
+    enum: ["ACTIVE", "HIDDEN", "ARCHIVED"],
+    default: "ACTIVE",
+  },
 });
 
 petSchema.index({ location: "2dsphere" });

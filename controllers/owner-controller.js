@@ -115,8 +115,8 @@ function returnNotFoundError(res, ownerId) {
     "Owner Error",
     `No owner for id ${ownerId}`
   );
+}
 
-  function returnOtherError(res, code, err) {
-    return errorUtil.errorRes(res, code, "Owner Error", err);
-  }
+function returnOtherError(res, code, err) {
+  return errorUtil.errorRes(res, code, "Owner Error", err);
 }

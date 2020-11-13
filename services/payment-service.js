@@ -18,7 +18,7 @@ exports.getPaymentById = async function (paymentId) {
     winston.info(`Booking for ID: ${paymentId} - ${payment}`);
     return { payment };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -84,7 +84,7 @@ exports.declinePayment = function (paymentId) {
     ).exec();
     return { payment };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -105,7 +105,7 @@ exports.setPaymentToPaid = function (paymentId, stripeCharge) {
     ).exec();
     return { payment };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -125,7 +125,7 @@ exports.setPaymentToRefunded = function (paymentId, stripeRefund) {
     ).exec();
     return { payment };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
