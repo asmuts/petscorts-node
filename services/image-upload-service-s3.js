@@ -25,7 +25,8 @@ function removeImageFromS3(imageKey) {
       Key: imageKey,
     },
     function (err, data) {
-      winston.error(
+      winston.log(
+        "error",
         `Error removing image ${imageKey} from S3 bucket ${bucketName}`,
         err
       );

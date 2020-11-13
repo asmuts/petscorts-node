@@ -15,8 +15,8 @@ router.delete(
   petController.removeImageFromPet
 );
 
-// TODO - delete probably shouldn't delete
-// it should archive
-router.delete("/:id", [validateObjectId_mw, auth_mw], petController.deletePet);
+// Soft Delete - Archive!
+// This API will not expose a hard delete
+router.delete("/:id", [validateObjectId_mw, auth_mw], petController.archivePet);
 
 module.exports = router;

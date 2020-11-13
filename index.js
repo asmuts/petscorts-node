@@ -20,6 +20,7 @@ require("./startup/mongo")(app);
 require("./startup/routes")(app);
 require("./startup/validation")();
 
+console.log("Finish: index.js require and app use.");
 // Note. Don't start the server here.
 // Supertest will load the app and start its own server.
 // Normal startup should use server.js

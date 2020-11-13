@@ -58,7 +58,7 @@ exports.updateSwipeCustomerId = async function (
     ).exec();
     return { renter };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };
@@ -72,7 +72,7 @@ exports.addBookingToRenter = async function (renterId, bookingId, session) {
     ).exec();
     return { renter };
   } catch (err) {
-    winston.error(err);
+    winston.log("error", err.message);
     return { err: err.message };
   }
 };

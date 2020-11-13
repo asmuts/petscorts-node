@@ -85,12 +85,24 @@ async function addGeolocationToPetData(petData) {
   }
 }
 
+// hard delete
 exports.deletePet = async function (req, res) {
   const petData = getPetDataFromRequest(req);
   const pet = await petService.deletePet(petData.ownerId);
   if (!pet) return returnNotFoundError(res, petData.ownerId);
 
-  res.json(pet);
+  return res.json(jsu.payload(pet));
+};
+
+// soft delete
+exports.archivePet = async function (req, res) {
+  const petData = getPetDataFromRequest(req);
+  let { pet, err } = await petService.archivePet(petData.petId);
+  if (err) {
+    return errorUtil.errorRes(res, 422, "Pet error", err);
+  }
+  if (!pet) return returnNotFoundError(res, petData.petId);
+  return res.json(jsu.payload(pet));
 };
 
 exports.removeImageFromPet = async function (req, res) {
@@ -112,3 +124,7 @@ exports.removeImageFromPet = async function (req, res) {
   }
   res.json(removedImage);
 };
+
+function returnNotFoundError(res, petId) {
+  return errorUtil.errorRes(res, 404, "Pet Error", `No pet for id ${petId}`);
+}
