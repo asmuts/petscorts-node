@@ -16,11 +16,15 @@ router.get(
   [validateObjectId_mw, auth_mw],
   renterController.getRenterById
 );
+
+router.get("/email/:email", auth_mw, renterController.getRenterByEmail);
+
 router.get(
   "/auth0_sub/:auth0_sub",
   auth_mw,
   renterController.getRenterByAuth0Sub
 );
+
 router.put(
   "/:id",
   [validateObjectId_mw, auth_mw],
