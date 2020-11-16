@@ -64,16 +64,22 @@ exports.addOwner = async function (req, res) {
   const { error } = ownerService.validateOwner(ownerData);
   if (error) return returnOtherError(res, 400, error.details[0].message);
 
-  const existing = await ownerService.getOwnerByEmail(ownerData.email);
+  const { owner: existing, err: errOwner } = await ownerService.getOwnerByEmail(
+    ownerData.email
+  );
   if (existing) {
-    winston.info("Email in use");
-    return returnOtherError(res, 422, "Email is in use.");
+    winston.info("Email [" + ownerData.email + "] in use");
+    return returnOtherError(
+      res,
+      422,
+      "Email [" + ownerData.email + "] is in use."
+    );
   }
 
   const { owner: newOwner, err } = await ownerService.addOwner(ownerData);
   if (err) return returnOtherError(res, 500, err);
   winston.info(`Added new owner: ${newOwner}`);
-  res.json(jsu.payload(nweOwner));
+  res.json(jsu.payload(newOwner));
 };
 
 exports.updateOwner = async function (req, res) {

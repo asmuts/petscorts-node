@@ -58,7 +58,10 @@ exports.getOwnerByEmail = async function (email) {
 exports.getOwnerByAuth0Sub = async function (auth0_sub) {
   try {
     const owner = await Owner.findOne({ auth0_sub }).exec();
-    winston.info(`OwnerService. owner for auth0_sub: ${auth0_sub} - ${owner}`);
+    winston.info(
+      `OwnerService. owner for auth0_sub: ${auth0_sub} - ${owner._id}`
+    );
+    winston.debug(`OwnerService. owner for auth0_sub: ${auth0_sub} - ${owner}`);
     return { owner };
   } catch (err) {
     winston.log("error", err.message);
@@ -72,9 +75,14 @@ exports.getOwnerByAuth0Sub = async function (auth0_sub) {
 exports.getOwnerByAuth0SubWithPets = async function (auth0_sub) {
   try {
     const owner = await Owner.findOne({ auth0_sub }).populate("pets").exec();
-    winston.info(
-      `OwnerService. Found owner for auth0_sub with pets: ${auth0_sub} - ${owner}`
-    );
+    if (owner) {
+      winston.info(
+        `OwnerService. owner for auth0_sub with pets: ${auth0_sub} - ${owner._id}`
+      );
+      winston.debug(
+        `OwnerService. Found owner for auth0_sub with pets: ${auth0_sub} - ${owner}`
+      );
+    }
     return { owner };
   } catch (err) {
     winston.log("error", err.message);
@@ -179,9 +187,9 @@ exports.validateOwner = function (owner) {
   const schema = Joi.object({
     ownerId: Joi.string().optional(),
     username: Joi.string().required().min(5),
-    fullname: Joi.string().required().min(5),
+    fullname: Joi.string().required().min(5).max(128),
     email: Joi.string().email().required(),
-    auth0_sub: Joi.string().optional(),
+    auth0_sub: Joi.string().required().max(128),
   });
   // TODO make sub required after cleaning up the db
   return schema.validate(owner);

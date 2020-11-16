@@ -16,16 +16,29 @@ exports.getRenterById = async function (renterId) {
 };
 
 exports.getRenterByEmail = async function (email) {
-  const renter = await Renter.findOne({ email }).exec();
-  winston.debug(`Found renter for email: ${email} - ${renter}`);
-  return renter;
+  try {
+    const renter = await Renter.findOne({ email }).exec();
+    winston.debug(`RenterService. Renter for email: ${email} - ${owner}`);
+    return { renter };
+  } catch (err) {
+    winston.log("error", err.message);
+    return { err: err.message };
+  }
 };
 
 exports.getRenterByAuth0Sub = async function (auth0_sub) {
-  const renter = await Renter.findOne({ auth0_sub }).exec();
-  winston.debug(`Found renter for auth0_sub: ${eauth0_submail} - ${renter}`);
-  return renter;
+  try {
+    const renter = await Renter.findOne({ auth0_sub }).exec();
+    winston.info(`RenterService. by auth0_sub: ${auth0_sub} - ${owner._id}`);
+    winston.debug(`RenterService. by auth0_sub: ${auth0_sub} - ${renter}`);
+    return { renter };
+  } catch (err) {
+    winston.log("error", err.message);
+    return { err: err.message };
+  }
 };
+
+//////////////////////////////////////////////////////////
 
 exports.addRenter = async function (renterData) {
   let renter = new Renter({
@@ -104,13 +117,14 @@ exports.deleteRenter = async function (renterId) {
   return renter;
 };
 
+////////////////////////////////////////////////////
 exports.validateRenter = function (renter) {
   const schema = Joi.object({
     renterId: Joi.string().optional(),
     username: Joi.string().required().min(5).max(32),
     fullname: Joi.string().required().min(5).max(100),
     email: Joi.string().email().required(),
-    auth0_sub: Joi.string().required().min(5).max(64),
+    auth0_sub: Joi.string().required().min(5).max(128),
   });
   return schema.validate(renter);
 };

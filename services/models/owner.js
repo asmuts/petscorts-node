@@ -10,12 +10,12 @@ const ownerSchema = new Schema({
   fullname: {
     type: String,
     minlength: [4, "Too shart. Min is 4"],
-    maxlength: [32, "Too long. Max is 32"],
+    maxlength: [64, "Too long. Max is 64"],
   },
   email: {
     type: String,
     minlength: [4, "Too shart. Min is 4"],
-    maxlength: [32, "Too long. Max is 32"],
+    maxlength: [64, "Too long. Max is 64"],
     unique: true,
     lowercase: true,
     required: "Email is required",
@@ -24,7 +24,7 @@ const ownerSchema = new Schema({
   auth0_sub: {
     type: String,
     minlength: [4, "Too shart. Min is 4"],
-    maxlength: [64, "Too long. Max is 64"],
+    maxlength: [128, "Too long. Max is 128"],
     unique: true,
     lowercase: true,
     //required: "auth0_sub is required",

@@ -1,7 +1,9 @@
 const winston = require("winston");
 const renterService = require("../services/renter-service");
 const errorUtil = require("./util/error-util");
+const jsu = require("./util/json-style-util");
 
+//for testing, disabled in prod
 exports.getAllRenters = async function (req, res) {
   const renters = await renterService.getAllRenters();
   res.json(renters);
@@ -21,19 +23,23 @@ exports.getRenterById = async function (req, res) {
   res.json(renter);
 };
 
+exports.getRenterByEmail = async function (req, res) {
+  const email = req.params.email;
+  const { renter, err } = await ownerService.getRenterByEmail(email);
+  if (err) return returnOtherError(res, 500, err);
+  if (!renter) return returnNotFoundError(res, email);
+  res.json(jsu.payload(renter));
+};
+
 exports.getRenterByAuth0Sub = async function (req, res) {
   const auth0_sub = req.params.auth0_sub;
   const renter = await renterService.getRenterByAuth0Sub(auth0_sub);
-
-  if (!renter)
-    return errorUtil.errorRes(
-      res,
-      422,
-      "Renter Error",
-      `No renter for auth0_sub ${auth0_sub}`
-    );
-  res.json(renter);
+  if (err) return returnOtherError(res, 500, err);
+  if (!renter) return returnNotFoundError(res, auth0_sub);
+  res.json(jsu.payload(renter));
 };
+
+//////////////////////////////////////////////////////
 
 exports.addRenter = async function (req, res) {
   const renterData = getRenterDataFromRequest(req);
@@ -91,4 +97,19 @@ function getRenterDataFromRequest(req) {
     renter.renterId = req.params.id;
   }
   return renter;
+}
+
+//////////////////////////////////////////////////////////
+
+function returnNotFoundError(res, ownerId) {
+  return errorUtil.errorRes(
+    res,
+    404,
+    "Owner Error",
+    `No owner for id ${ownerId}`
+  );
+}
+
+function returnOtherError(res, code, err) {
+  return errorUtil.errorRes(res, code, "Owner Error", err);
 }
