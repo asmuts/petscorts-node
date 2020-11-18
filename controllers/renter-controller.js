@@ -25,7 +25,7 @@ exports.getRenterById = async function (req, res) {
 
 exports.getRenterByEmail = async function (req, res) {
   const email = req.params.email;
-  const { renter, err } = await ownerService.getRenterByEmail(email);
+  const { renter, err } = await renterService.getRenterByEmail(email);
   if (err) return returnOtherError(res, 500, err);
   if (!renter) return returnNotFoundError(res, email);
   res.json(jsu.payload(renter));
@@ -33,7 +33,7 @@ exports.getRenterByEmail = async function (req, res) {
 
 exports.getRenterByAuth0Sub = async function (req, res) {
   const auth0_sub = req.params.auth0_sub;
-  const renter = await renterService.getRenterByAuth0Sub(auth0_sub);
+  const { renter, err } = await renterService.getRenterByAuth0Sub(auth0_sub);
   if (err) return returnOtherError(res, 500, err);
   if (!renter) return returnNotFoundError(res, auth0_sub);
   res.json(jsu.payload(renter));
@@ -52,7 +52,9 @@ exports.addRenter = async function (req, res) {
       error.details[0].message
     );
 
-  const existing = await renterService.getRenterByEmail(renterData.email);
+  const { renter: existing, err } = await renterService.getRenterByEmail(
+    renterData.email
+  );
   if (existing) {
     winston.debug("Email in use");
     return errorUtil.errorRes(res, 422, "Renter error", "Email is in use.");
@@ -60,7 +62,7 @@ exports.addRenter = async function (req, res) {
 
   winston.info("Adding new renter");
   const newRenterId = await renterService.addRenter(renterData);
-  winston.debug(`Added new renter: ${newRenterId}`);
+  winston.info(`Added new renter: ${newRenterId}`);
   res.json({ renterId: newRenterId });
 };
 
@@ -105,11 +107,11 @@ function returnNotFoundError(res, ownerId) {
   return errorUtil.errorRes(
     res,
     404,
-    "Owner Error",
-    `No owner for id ${ownerId}`
+    "Renter Error",
+    `No renter for id ${ownerId}`
   );
 }
 
 function returnOtherError(res, code, err) {
-  return errorUtil.errorRes(res, code, "Owner Error", err);
+  return errorUtil.errorRes(res, code, "Renter Error", err);
 }

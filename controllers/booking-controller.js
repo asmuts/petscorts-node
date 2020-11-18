@@ -1,4 +1,7 @@
 const winston = require("winston");
+const moment = require("moment");
+var mongoose = require("mongoose");
+
 const bookingService = require("../services/booking-service");
 const petService = require("../services/pet-service");
 const paymentService = require("../services/payment-service");
@@ -6,7 +9,29 @@ const renterService = require("../services/renter-service");
 const stripeService = require("../services/stripe-service");
 const transactionHelper = require("../services/util/transaction-helper");
 const errorUtil = require("./util/error-util");
-const moment = require("moment");
+const jsu = require("./util/json-style-util");
+
+/*
+  I might want to move this to the pet controller.
+  The booking service should probably not be a Node service.
+  I'd break it out. But the get bookings for pets API is fine here.
+
+  Strip out all the details except the dates.
+
+  Return empty rather than 404 if there are no bookings.
+*/
+exports.getBookingDatesForPet = async function (req, res) {
+  const petId = req.params.id;
+  const { bookings, err } = await bookingService.getBookingsForPet(petId);
+  if (err) {
+    return errorUtil.errorRes(res, 500, "Booking Retrieval Error", err);
+  }
+  let dates = [];
+  if (bookings) {
+    bookings.map((b) => dates.push({ startAt: b.startAt, endAt: b.endAt }));
+  }
+  res.json(jsu.payload(dates));
+};
 
 /*
 This is a multi-step process:
@@ -23,88 +48,155 @@ Note: I'm following my patern of having controllers talk to multiple services.
 No service should talk to any other service. Controllers (for now) don't talk to
 other controllers, just services.
 */
-exports.createBooking = function (req, res) {
+exports.createBooking = async function (req, res) {
   const { startAt, endAt, totalPrice, days, petId, paymentToken } = req.body;
   const user = req.user;
 
-  const {pet: foundPet, errGetPet } = petService.getPetByIdWithOwnerAndBookings(petId);
-  if ( errGetPet ){
-    return errorUtil.errorRes( res, 422, "Booking error", errGetPet)
+  // move to booking service
+  const bookingId = mongoose.Types.ObjectId();
+
+  winston.info("BookingService. CB. getRenter");
+  const { renter, err: errGetRenter } = await renterService.getRenterByAuth0Sub(
+    user.sub
+  );
+
+  winston.info("BookingService. CB. getPet");
+  const {
+    pet: foundPet,
+    errGetPet,
+  } = await petService.getPetByIdWithOwnerAndBookings(petId);
+  if (errGetPet) {
+    return errorUtil.errorRes(res, 422, "Booking error", errGetPet);
   }
-      // this will have to check sub, not id
-      if (foundPet.owner.id === user.id) {
-        return errorUtil.errorRes( res, 422, "Booking error",
-          "Cannot create booking on your pet.")
-      }
+  winston.info(foundPet);
 
-      if (!isValidBooking(startAt, endAt, foundPet)) {
-        return errorUtil.errorRes( res, 422, "Booking error",
-        "The dates selected are no longer available")
-      }
+  winston.info("BookingService. CB. checkOwner");
+  // this will have to check sub, not id
+  if (foundPet.owner._id.toString() === renter._id.toString()) {
+    return errorUtil.errorRes(
+      res,
+      422,
+      "Booking error",
+      "Cannot create booking on your pet."
+    );
+  }
 
-        const { customer, errStripe } = await stripeService.createStripeCustomer(booking.renter, paymentToken);
-        if (errStripe) {
-          return errorUtil.errorRes( res, 422, "Booking error",
-          "Cannot process payment.")
-        }
+  winston.info("BookingService. CB. isValid");
+  if (!isValidBooking(startAt, endAt, foundPet)) {
+    return errorUtil.errorRes(
+      res,
+      422,
+      "Availability Error",
+      "The dates selected are no longer available"
+    );
+  }
 
-        ///////////////////////////////////////////////////////////////
-        // All the operations below should be in a transaction
-        // Fail fast and return an error
-        const session = await transactionHelper.startTransaction();
+  winston.info("BookingService. CB. createStripeCustomer");
+  const { customer, errStripe } = await stripeService.createStripeCustomer(
+    renter.email,
+    paymentToken
+  );
+  if (errStripe) {
+    return errorUtil.errorRes(
+      res,
+      422,
+      "Booking error",
+      "Cannot process payment."
+    );
+  }
 
-        // can't go on if this fails.
-        const { renter, err: errRenter } = await renterService.updateSwipeCustomerId(renter._id, customer.id, session);
-        if (errRenter) {
-          await transactionHelper.abortTransaction(session);
-          return errorUtil.errorRes( res, 422, "Payment error", errRenter)
-        }
+  ///////////////////////////////////////////////////////////////
+  // All the operations below should be in a transaction
+  // Fail fast and return an error
+  winston.info("BookingService. CB. startTransaction");
+  const session = await transactionHelper.startTransaction();
 
-        // create payment record
-        const { payment, errPayment } = await paymentService.createPayment( customer,
-          booking_id, renter._id, foundPet.owner_id, paymentToken, session);
-        if (errPayment) {
-          await transactionHelper.abortTransaction(session);
-          return errorUtil.errorRes( res, 422, "Payment error", errPayment)
-        }
+  // can't go on if this fails.
+  winston.info("BookingService. CB. updateSwipeCustomerId");
+  const {
+    renter: renterUpdatedSwipe,
+    err: errRenterSwipe,
+  } = await renterService.updateSwipeCustomerId(
+    renter._id,
+    customer.id,
+    session
+  );
+  if (errRenterSwipe) {
+    await transactionHelper.abortTransaction(session);
+    return errorUtil.errorRes(res, 422, "Payment error", errRenterSwipe);
+  }
 
-        let bookingData = {
-          startAt,
-          endAt,
-          totalPrice,
-          days,
-          renterId: renter._id,
-          ownerId: owner._id,
-          petId: foundPet._id,
-          paymentId: payment._id,
-        };
+  // create payment record
+  winston.info("BookingService. CB. createPayment");
+  const { payment, errPayment } = await paymentService.createPayment(
+    customer,
+    bookingId,
+    renter._id,
+    foundPet.owner_id,
+    totalPrice,
+    paymentToken,
+    session
+  );
+  if (errPayment) {
+    await transactionHelper.abortTransaction(session);
+    return errorUtil.errorRes(res, 422, "Payment error", errPayment);
+  }
 
-        // save booking
-        const { booking, err: errBooking } = await bookingService.addBooking(bookingData, session);
-        if (errBooking) {
-          await transactionHelper.abortTransaction(session);
-          return errorUtil.errorRes( res, 422, "Payment error", errBooking)
-        }
+  let bookingData = {
+    _id: bookingId,
+    startAt,
+    endAt,
+    totalPrice,
+    days,
+    renterId: renter._id,
+    ownerId: foundPet.owner._id,
+    petId: foundPet._id,
+    paymentId: payment._id,
+  };
 
-        // update pet
-        const { pet: petUpdated, err: errPet } = petService.addBookingToPet(foundPet._id, booking._id, session);
-        if (errPet) {
-          await transactionHelper.abortTransaction(session);
-          return errorUtil.errorRes( res, 422, "Payment error", errPet)
-        }
+  // save booking
+  winston.info("BookingService. CB. addBooking");
+  const { booking, err: errBooking } = await bookingService.addBooking(
+    bookingData,
+    session
+  );
+  if (errBooking) {
+    await transactionHelper.abortTransaction(session);
+    return errorUtil.errorRes(res, 422, "Payment error", errBooking);
+  }
 
-        // update renter
-        const { renter: renterUpdated, err: errRenter } = renterService.addBookingToRenter(renter._id, booking._id, session)
-        if (errRenter) {
-          await transactionHelper.abortTransaction(session);
-          return errorUtil.errorRes( res, 422, "Payment error", errRenter)
-        }
+  // update pet
+  winston.info("BookingService. CB. addBookingToPet");
+  const { pet: petUpdated, err: errPet } = await petService.addBookingToPet(
+    foundPet._id,
+    booking._id,
+    session
+  );
+  if (errPet) {
+    await transactionHelper.abortTransaction(session);
+    return errorUtil.errorRes(res, 422, "Payment error", errPet);
+  }
 
-        await transactionHelper.commitTransaction(session);
-        ///////////////////////////////////////////////////////////////
+  // update renter
+  winston.info("BookingService. CB. addBookingToRenter");
+  const {
+    renter: renterUpdated,
+    err: errRenter,
+  } = await renterService.addBookingToRenter(renter._id, booking._id, session);
+  if (errRenter) {
+    await transactionHelper.abortTransaction(session);
+    return errorUtil.errorRes(res, 422, "Payment error", errRenter);
+  }
 
-        return res.json({ startAt: startAt, endAt: endAt });
-}
+  // commit we are done!!!!!!!!!
+  winston.info("BookingService. CB. commitTransaction");
+  await transactionHelper.commitTransaction(session);
+
+  ///////////////////////////////////////////////////////////////
+
+  res.json(jsu.payload(booking));
+  //return res.json({ startAt: startAt, endAt: endAt });
+};
 
 /*
   Make sure that the proposed booking doesn't overlap
@@ -117,14 +209,14 @@ function isValidBooking(startAt, endAt, pet) {
   let isValid = true;
 
   if (pet.bookings && pet.bookings.length > 0) {
-    isValid = rental.bookings.every((booking) => {
-      if ( booking.status === bookingService.STATUS.CANCELLED) return true;
+    isValid = pet.bookings.every((booking) => {
+      if (booking.status === bookingService.STATUS.CANCELLED) return true;
 
-      const proposedStart = moment(startAt);
-      const proposedEnd = moment(endAt);
+      const proposedStart = moment(startAt, "MM/DD/YYYY");
+      const proposedEnd = moment(endAt, "MM/DD/YYYY");
 
-      const actualStart = moment(booking.startAt);
-      const actualEnd = moment(booking.endAt);
+      const actualStart = moment(booking.startAt, "MM/DD/YYYY");
+      const actualEnd = moment(booking.endAt, "MM/DD/YYYY");
 
       // check to see that any existing bookings begin and end before the proposed
       // or that the proposed begins and ends beforethe others

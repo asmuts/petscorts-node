@@ -2,7 +2,7 @@ const Joi = require("joi");
 const winston = require("winston");
 const Pet = require("../services/models/pet");
 
-const STATUS = {
+exports.STATUS = {
   ACTIVE: "ACTIVE",
   HIDDEN: "HIDDEN",
   ARCHIVED: "ARCHIVED",
@@ -38,11 +38,11 @@ exports.getPetById = async function (petId) {
 // Changed the datamodel so that populate will work
 exports.getPetByIdWithOwnerAndBookings = async function (petId) {
   try {
-    const pet = await Pet.findById(pet._id)
+    const pet = await Pet.findById(petId)
       .populate("bookings")
       .populate("owner")
       .exec();
-    winston.debug(`PetService. Found pet for ID: ${petId} - ${pet}`);
+    winston.info(`PetService. Found pet for ID: ${petId} - ${pet}`);
     return { pet };
   } catch (err) {
     winston.log("error", err.message);
@@ -137,19 +137,20 @@ exports.addImageToPet = async function (petId, imageUrl) {
 exports.removeImageFromPet = async function (petId, imageId) {
   try {
     const pet = await Pet.findById(petId);
-    if (!pet) throw new Error("Couldn't find pet for id " + petId);
+    if (!pet) throw new Error("PetService. Couldn't find pet for id " + petId);
 
+    winston.info(pet);
     // mongo ids are objects, they can't be compared to strings with ===
     const found = pet.images.find((image) => image._id.equals(imageId));
 
     // mongoose can do this for me, cool
     pet.images.pull({ _id: imageId });
-    pet.save();
+    await pet.save();
     winston.info(`PetService. Removed image ${imageId} from pet ${petId}`);
 
-    return { pet, imageId };
+    return { pet, image: found };
   } catch (err) {
-    winston.log("error", err);
+    winston.log("error", "PetService. " + err.message);
     return { err: err.message };
   }
 };
@@ -186,7 +187,7 @@ exports.addBookingToPet = async function (petId, bookingId, session) {
   try {
     const pet = await Pet.findByIdAndUpdate(
       petId,
-      { $push: { bookings: bookingId } },
+      { $push: { bookings: { _id: bookingId } } },
       { session, new: true }
     ).exec();
     return { pet };
@@ -200,6 +201,7 @@ exports.removeBookingFromPet = async function (petId, bookingId) {
   try {
     const pet = await Pet.findById(petId);
     pet.bookings.pull(bookingId);
+    await pet.save();
     return { pet };
   } catch (err) {
     winston.log("error", err);
@@ -211,11 +213,20 @@ exports.removeBookingFromPet = async function (petId, bookingId) {
 // TODO make a method to revive
 exports.archivePet = async function (petId) {
   winston.info(`PetService. Archiving Pet - id: ${petId}`);
+  return await updatePetStatus(petId, STATUS.ARCHIVED);
+};
+
+exports.activatePet = async function (petId) {
+  winston.info(`PetService. Archiving Pet - id: ${petId}`);
+  return await updatePetStatus(petId, STATUS.ACTIVE);
+};
+
+const updatePetStatus = async (petId, newStatus) => {
   try {
     const pet = await Pet.findByIdAndUpdate(
       petId,
       {
-        status: STATUS.ARCHIVED,
+        status: STATUS.newStatus,
       },
       {
         new: true,

@@ -1,20 +1,24 @@
-const Payment = require("../models/payment");
-const Booking = require("../models/booking");
+const mongoose = require("mongoose");
+const winston = require("winston");
 
-const Pet = require("../models/pet");
-const Owner = require("../models/owner");
-const Renter = require("../models/renter");
+const Payment = require("./models/payment");
+
+// crude - TODO make configurable
+const CUSTOMER_SHARE = 0.8;
 
 const STATUS = {
   PENDING: "PENDING",
   DECLINED: "DECLINED",
   PAID: "PAID",
-  REFUNDED: "REFUNDED"
+  REFUNDED: "REFUNDED",
 };
 
 exports.getPaymentById = async function (paymentId) {
   try {
-    const payment = await Payment.findById(paymentId).populate("booking").populate("owner").exec();
+    const payment = await Payment.findById(paymentId)
+      .populate("booking")
+      .populate("owner")
+      .exec();
     winston.info(`Booking for ID: ${paymentId} - ${payment}`);
     return { payment };
   } catch (err) {
@@ -30,7 +34,9 @@ exports.createPayment = async (
   bookingId,
   renterId,
   ownerId,
-  token
+  totalPrice,
+  token,
+  session
 ) => {
   const tokenId = token.id || token;
 
@@ -39,20 +45,21 @@ exports.createPayment = async (
     owner: ownerId,
     stripeCustomerId: stripeCustomer.id,
     stripeCustomer: stripeCustomer,
-    booking,
+    booking: bookingId,
     tokenId: token.id,
-    amount: booking.totalPrice * 100 * CUSTOMER_SHARE,
+    amount: totalPrice * 100 * CUSTOMER_SHARE,
   });
 
   try {
     const savedPayment = await payment.save(session);
     return { payment: savedPayment };
   } catch (err) {
+    winston.log("erorr", "PaymentService. createPayment " + err.message);
     return { err: err.message };
   }
 };
 
-exports.getPendingPayments = function (ownerId) {
+exports.getPendingPayments = async function (ownerId) {
   try {
     const foundPayments = await Payment.where({ owner: ownerId })
       .populate({
@@ -71,7 +78,7 @@ exports.getPendingPayments = function (ownerId) {
  This is called when an owner declines a
   booking
 */
-exports.declinePayment = function (paymentId) {
+exports.declinePayment = async function (paymentId) {
   try {
     const payment = await Payment.findByIdAndUpdate(
       paymentId,
@@ -90,14 +97,14 @@ exports.declinePayment = function (paymentId) {
 };
 
 // Saving the entire charge record and the id for lookup
-exports.setPaymentToPaid = function (paymentId, stripeCharge) {
+exports.setPaymentToPaid = async function (paymentId, stripeCharge) {
   try {
     const payment = await Payment.findByIdAndUpdate(
       paymentId,
       {
         status: STATUS.PAID,
         stripCharge: stripeCharge,
-        stripeChargeId: stripeCharge.id
+        stripeChargeId: stripeCharge.id,
       },
       {
         new: true,
@@ -111,13 +118,13 @@ exports.setPaymentToPaid = function (paymentId, stripeCharge) {
 };
 
 // Saving the entire charge record and the id for lookup
-exports.setPaymentToRefunded = function (paymentId, stripeRefund) {
+exports.setPaymentToRefunded = async function (paymentId, stripeRefund) {
   try {
     const payment = await Payment.findByIdAndUpdate(
       paymentId,
       {
         status: STATUS.REFUNDED,
-        stripeRefund: stripeRefund.id
+        stripeRefund: stripeRefund.id,
       },
       {
         new: true,
