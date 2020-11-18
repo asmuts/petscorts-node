@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 exports.startTransaction = async function () {
   const session = await mongoose.startSession();
-  session.startTransaction();
+  await session.startTransaction();
   return session;
 };
 
@@ -13,5 +13,5 @@ exports.abortTransaction = async function (session) {
 
 exports.commitTransaction = async function (session) {
   await session.commitTransaction();
-  session.endSession();
+  await session.endSession();
 };

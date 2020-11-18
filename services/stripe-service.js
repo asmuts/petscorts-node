@@ -13,6 +13,9 @@ const config = require("config");
 const stripe = require("stripe")(config.get("stripe_secret_key"));
 
 // Should store the entire customer object, not just the id
+// NOTE: You cannot use a Stripe token more than once:
+// If the booking fails, the customer will have to re-enter their card
+// this is going to be tricky to message back to the web app
 exports.createStripeCustomer = async (email, token) => {
   try {
     const customer = await stripe.customers.create({

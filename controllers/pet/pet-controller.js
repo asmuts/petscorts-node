@@ -105,13 +105,22 @@ exports.archivePet = async function (req, res) {
   return res.json(jsu.payload(pet));
 };
 
+exports.activatePet = async function (req, res) {
+  const petData = getPetDataFromRequest(req);
+  let { pet, err } = await petService.activatePet(petData.petId);
+  if (err) {
+    return errorUtil.errorRes(res, 422, "Pet error", err);
+  }
+  if (!pet) return returnNotFoundError(res, petData.petId);
+  return res.json(jsu.payload(pet));
+};
+
 exports.removeImageFromPet = async function (req, res) {
   const petData = getPetDataFromRequest(req);
   const imageId = req.params.imageId;
+  winston.info("PetController. RIFP " + petData.petId + " imageId " + imageId);
   // TODO error handling for params
-  // TODO figure out how to remove items from S3
-  // as of now, they'll just sit there.
-  const removedImage = await petService.removeImageFromPet(
+  const { pet, image: removedImage, err } = await petService.removeImageFromPet(
     petData.petId,
     imageId
   );
@@ -122,7 +131,7 @@ exports.removeImageFromPet = async function (req, res) {
     const fileName = url.substring(url.lastIndexOf("/") + 1, [url.length]);
     removeImageFromS3(fileName);
   }
-  res.json(removedImage);
+  return res.json(jsu.payload(removedImage));
 };
 
 function returnNotFoundError(res, petId) {

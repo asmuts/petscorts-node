@@ -158,13 +158,13 @@ describe("/pet-service", () => {
       const origImageId = petUpdated.images[petUpdated.images.length - 1]._id;
       const {
         pet: petUpdated2,
-        imageId,
+        image,
         err: err2,
       } = await petService.removeImageFromPet(petUpdated._id, origImageId);
       expect(err2).toBeFalsy();
       expect(petUpdated2.images.length).toBe(0);
-      expect(imageId).toBeTruthy();
-      expect(origImageId.toString()).toBe(imageId.toString());
+      expect(image._id).toBeTruthy();
+      expect(origImageId.toString()).toBe(image._id.toString());
     });
   });
 
@@ -233,6 +233,8 @@ describe("/pet-service", () => {
   }
 
   describe("addBookingToPet", () => {
+    jest.setTimeout(10000);
+
     it("should add a booking", async () => {
       pet = await setUpPet();
       booking = await setUpBooking(pet);

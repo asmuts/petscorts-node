@@ -39,7 +39,7 @@ describe("/booking-service", () => {
       username: "renter1",
       fullname: "renter 1",
       email: "renter1@own.com",
-      auth0_sub: "auth0_sub",
+      auth0_sub: "setupOwnerRenterPet-auth0_sub",
     });
     await newRenter.save();
 
@@ -58,6 +58,8 @@ describe("/booking-service", () => {
   }
 
   describe("addBooking", () => {
+    jest.setTimeout(10000);
+
     it("should add a booking", async () => {
       let bookingData = {
         startAt: "01/01/2030",
@@ -71,21 +73,30 @@ describe("/booking-service", () => {
       };
 
       // Store it
-      const result = await bookingService.addBooking(bookingData);
-      const storedBooking = result.booking;
+      const { booking: storedBooking, err } = await bookingService.addBooking(
+        bookingData
+      );
       expect(storedBooking._id).toBeTruthy();
 
-      const startInput = moment(bookingData.startAt).format("MM/DD/YYYY");
-      const startResult = moment(storedBooking.startAt).format("MM/DD/YYYY");
+      const startInput = moment(bookingData.startAt, "MM/DD/YYYY").format(
+        "MM/DD/YYYY"
+      );
+      const startResult = moment(storedBooking.startAt, "MM/DD/YYYY").format(
+        "MM/DD/YYYY"
+      );
       expect(startInput).toBe(startResult);
 
-      const endInput = moment(bookingData.endAt).format("MM/DD/YYYY");
-      const endResult = moment(storedBooking.endAt).format("MM/DD/YYYY");
+      const endInput = moment(bookingData.endAt, "MM/DD/YYYY").format(
+        "MM/DD/YYYY"
+      );
+      const endResult = moment(storedBooking.endAt, "MM/DD/YYYY").format(
+        "MM/DD/YYYY"
+      );
       expect(endInput).toBe(endResult);
     });
   });
 
-  describe("getBookingsForOwner", () => {
+  describe("getBookingById", () => {
     it("should retrieve booking", async () => {
       let bookingData = {
         startAt: "01/01/2030",
@@ -133,6 +144,39 @@ describe("/booking-service", () => {
       // Get the booking by owner
       const { bookings, err } = await bookingService.getBookingsForOwner(
         newOwner._id
+      );
+      const retrievedBookingsByOwner = bookings;
+      expect(retrievedBookingsByOwner[0]._id).toBeTruthy();
+
+      const found = retrievedBookingsByOwner.find((booking) =>
+        booking._id.equals(storedBooking._id)
+      );
+      expect(found).toBeTruthy();
+    });
+  });
+
+  describe("getBookingsForPet", () => {
+    jest.setTimeout(10000);
+
+    it("should retrieve booking", async () => {
+      let bookingData = {
+        startAt: "01/01/2030",
+        endAt: "01/05/2030",
+        totalPrice: "4",
+        days: 4,
+        renterId: newRenter._id,
+        ownerId: newOwner._id,
+        petId: newPet._id,
+        //paymentId: payment._id,
+      };
+
+      // Store it
+      const result = await bookingService.addBooking(bookingData);
+      const storedBooking = result.booking;
+
+      // Get the booking by pet
+      const { bookings, err } = await bookingService.getBookingsForPet(
+        newPet._id
       );
       const retrievedBookingsByOwner = bookings;
       expect(retrievedBookingsByOwner[0]._id).toBeTruthy();

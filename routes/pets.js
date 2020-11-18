@@ -19,4 +19,10 @@ router.delete(
 // This API will not expose a hard delete
 router.delete("/:id", [validateObjectId_mw, auth_mw], petController.archivePet);
 
+router.put(
+  "/activate/:id",
+  [validateObjectId_mw, auth_mw],
+  petController.activatePet
+);
+
 module.exports = router;

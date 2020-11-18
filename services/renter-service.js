@@ -1,6 +1,7 @@
 const Joi = require("joi");
 const winston = require("winston");
 const Renter = require("./models/renter");
+const Booking = require("./models/booking");
 
 // for testing only. Limited to 200 reults
 exports.getAllRenters = async function () {
@@ -18,7 +19,7 @@ exports.getRenterById = async function (renterId) {
 exports.getRenterByEmail = async function (email) {
   try {
     const renter = await Renter.findOne({ email }).exec();
-    winston.debug(`RenterService. Renter for email: ${email} - ${owner}`);
+    winston.info(`RenterService. Renter for email: ${email} - ${renter}`);
     return { renter };
   } catch (err) {
     winston.log("error", err.message);
@@ -29,8 +30,7 @@ exports.getRenterByEmail = async function (email) {
 exports.getRenterByAuth0Sub = async function (auth0_sub) {
   try {
     const renter = await Renter.findOne({ auth0_sub }).exec();
-    winston.info(`RenterService. by auth0_sub: ${auth0_sub} - ${owner._id}`);
-    winston.debug(`RenterService. by auth0_sub: ${auth0_sub} - ${renter}`);
+    winston.info(`RenterService. by auth0_sub: ${auth0_sub} - ${renter}`);
     return { renter };
   } catch (err) {
     winston.log("error", err.message);
@@ -78,9 +78,12 @@ exports.updateSwipeCustomerId = async function (
 
 exports.addBookingToRenter = async function (renterId, bookingId, session) {
   try {
+    let booking = new Booking({
+      _id: bookingId,
+    });
     const renter = await Renter.findByIdAndUpdate(
       renterId,
-      { $push: { bookings: bookingId } },
+      { $push: { bookings: booking } },
       { session, new: true }
     ).exec();
     return { renter };

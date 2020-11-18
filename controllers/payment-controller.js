@@ -6,13 +6,13 @@ const stripeService = require("../services/stripe-service");
 const errorUtil = require("./util/error-util");
 const transactionHelper = require("../services/util/transaction-helper");
 
-exports.getPendingPayments = function (req, res) {
+exports.getPendingPayments = async function (req, res) {
   // TODO take this as a param
   // have middleware match the ids
   const user = req.user;
   const ownerId = user._id;
 
-  const { payments, err } = paymentService.getPendingPayments(ownerId);
+  const { payments, err } = await paymentService.getPendingPayments(ownerId);
   if (err) {
     return errorUtil.errorRes(
       res,
@@ -31,11 +31,11 @@ This is called when an owner declines a booking.
 
 TODO clean this up. Add transaction support.
 */
-exports.declinePayment = function (req, res) {
+exports.declinePayment = async function (req, res) {
   const paymentId = req.params.paymentId;
 
   // Can't go on if this fails.
-  let { payment, err } = paymentService.getPaymentById(paymentId);
+  let { payment, err } = await paymentService.getPaymentById(paymentId);
   if (err) {
     return errorUtil.errorRes(res, 422, "Payment error", err);
   }
@@ -43,7 +43,7 @@ exports.declinePayment = function (req, res) {
   // TODO Fail fast or get as much done as possible?
   // Gather the errors and report on them at the end.
   const errors = [];
-  const { booking, err: error2 } = bookingService.updateBookingStatus(
+  const { booking, err: error2 } = await bookingService.updateBookingStatus(
     payment.booking._id,
     bookingService.STATUS.CANCELLED
   );
@@ -51,14 +51,14 @@ exports.declinePayment = function (req, res) {
     errors.push(error2);
   }
 
-  let { err: error3 } = paymentService.declinePayment(payment._id);
+  let { err: error3 } = await paymentService.declinePayment(payment._id);
   if (error3) {
     errors.push(error3);
   }
 
   // Booking references the pet id, so it could be retrieved.
   // Removing it from the pet record might simplify things.
-  const { err: error4 } = petService.removeBookingFromPet(
+  const { err: error4 } = await petService.removeBookingFromPet(
     payment.pet._id,
     payment.booking._id
   );
@@ -66,7 +66,7 @@ exports.declinePayment = function (req, res) {
     errors.push(error4);
   }
 
-  if ( errors.length >0){
+  if (errors.length > 0) {
     return errorUtil.errorRes(res, 422, "Payment error", errors);
   }
 
@@ -89,26 +89,35 @@ exports.declinePayment = function (req, res) {
   a real application.
 
 */
-exports.confirmPayment = function (req, res) {
+exports.confirmPayment = async function (req, res) {
   const paymentId = req.params.paymentId;
-  let { payment, err } = paymentService.getPaymentById(paymentId);
+  let { payment, err } = await paymentService.getPaymentById(paymentId);
   if (err) {
     return errorUtil.errorRes(res, 422, "Payment error", err);
   }
 
   // Might also want to try if it is REFUNDED
-  if ( payment.status !== paymentService.STATUS.PENDING) {
-    return errorUtil.errorRes(res, 422, "Payment error", "Payment status was not pending.");
+  if (payment.status !== paymentService.STATUS.PENDING) {
+    return errorUtil.errorRes(
+      res,
+      422,
+      "Payment error",
+      "Payment status was not pending."
+    );
   }
 
   // middleware should check  user.id === foundPayment.renter.id
   const booking = payment.booking;
 
-    // call stripe service. Can't go on if this fails.
-    // Total price in dollars and cents, the service will *100
-  const { charge, err: errorStripe } = await stripeService.charge(booking.totalPrice,  payment.customer.id, payment.customer.default_source );
+  // call stripe service. Can't go on if this fails.
+  // Total price in dollars and cents, the service will *100
+  const { charge, err: errorStripe } = await stripeService.charge(
+    booking.totalPrice,
+    payment.customer.id,
+    payment.customer.default_source
+  );
   if (err) {
-     return errorUtil.errorRes(res, 422, "Payment error", errorStripe);
+    return errorUtil.errorRes(res, 422, "Payment error", errorStripe);
   }
 
   ///////////////////////////////////////////////////////////////
@@ -118,20 +127,32 @@ exports.confirmPayment = function (req, res) {
 
   // TODO need some kind of transaction
   const errors = [];
-  const { paymentUpdated, err: errorPaid } = paymentService.setPaymentToPaid(paymentId, charge, session )
-  if (errorPaid) errors.push( errorPaid );
+  const {
+    paymentUpdated,
+    err: errorPaid,
+  } = await paymentService.setPaymentToPaid(paymentId, charge, session);
+  if (errorPaid) errors.push(errorPaid);
 
-  const { booking, err: errorBooking } = bookingService.updateBookingStatus(
+  const {
+    booking: bookingUpdated,
+    err: errorBooking,
+  } = await bookingService.updateBookingStatus(
     payment.booking._id,
-    bookingService.STATUS.ACTIVE, session
+    bookingService.STATUS.ACTIVE,
+    session
   );
-  if (errorBooking) errors.push( errorBooking );
+  if (errorBooking) errors.push(errorBooking);
 
-  const { renter, err: errorRenter } = renterService.addToRevenue( payment.renter._id, paymentUpdated.amount, session );
-  if (errorRenter) errors.push( errorRenter );
+  const { renter, err: errorRenter } = await renterService.addToRevenue(
+    payment.renter._id,
+    paymentUpdated.amount,
+    session
+  );
+  if (errorRenter) errors.push(errorRenter);
 
   // ABORT AND REFUND IF NEEDED
-  if ( errors.length > 0 ){ // BAD NEWS
+  if (errors.length > 0) {
+    // BAD NEWS
     await transactionHelper.abortTransaction(session);
     return await refundCharge(res, charge, payment);
   }
@@ -143,13 +164,22 @@ exports.confirmPayment = function (req, res) {
 };
 
 // Refund and store the refundId on the payment record
-async function refundCharge(res, charge, payment){
-  const {refund, err: errRefund} = await stripeService.refund( charge.id );
-  if ( errRefund ) { // REALLY BAD NEWS!!!! The gods frown upon us.
-    return errorUtil.errorRes(res, 422, "Refund error", "Unfortunately there has been an error. Your card has been charged and we were unable to issue a refund. We are working on the problem.");
+async function refundCharge(res, charge, payment) {
+  const { refund, err: errRefund } = await stripeService.refund(charge.id);
+  if (errRefund) {
+    // REALLY BAD NEWS!!!! The gods frown upon us.
+    return errorUtil.errorRes(
+      res,
+      422,
+      "Refund error",
+      "Unfortunately there has been an error. Your card has been charged and we were unable to issue a refund. We are working on the problem."
+    );
   }
-  const {refund, err: errRefunStore } = paymentService.setPaymentToRefunded(payment._id, refund)
-  if(errRefunStore) {
+  const {
+    payment: refundPayment,
+    err: errRefunStore,
+  } = await paymentService.setPaymentToRefunded(payment._id, refund);
+  if (errRefunStore) {
     return errorUtil.errorRes(res, 422, "Payment error", errRefunStore);
   }
 }

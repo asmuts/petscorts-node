@@ -41,7 +41,7 @@ exports.getOwnerByIdWithPets = async function (ownerId) {
 
 exports.getOwnerByEmail = async function (email) {
   try {
-    const owner = await Owner.findOne({ email }).exec();
+    const owner = await Owner.findOne({ email: email }).exec();
     winston.debug(`OwnerService. owner for email: ${email} - ${owner}`);
     return { owner };
   } catch (err) {
@@ -57,11 +57,8 @@ exports.getOwnerByEmail = async function (email) {
 // It's also on the JWT, so I can authorize with it as well.
 exports.getOwnerByAuth0Sub = async function (auth0_sub) {
   try {
-    const owner = await Owner.findOne({ auth0_sub }).exec();
-    winston.info(
-      `OwnerService. owner for auth0_sub: ${auth0_sub} - ${owner._id}`
-    );
-    winston.debug(`OwnerService. owner for auth0_sub: ${auth0_sub} - ${owner}`);
+    const owner = await Owner.findOne({ auth0_sub: auth0_sub }).exec();
+    winston.info(`OwnerService. owner for auth0_sub: ${auth0_sub} - ${owner}`);
     return { owner };
   } catch (err) {
     winston.log("error", err.message);
