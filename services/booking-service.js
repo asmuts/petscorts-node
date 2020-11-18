@@ -78,6 +78,19 @@ exports.getBookingsForOwner = async function (ownerId) {
   }
 };
 
+exports.getBookingsForRenter = async function (renterId) {
+  try {
+    const bookings = await Booking.find({ renter: renterId })
+      .populate("pet")
+      .exec();
+    winston.info(`Found ${bookings.length} bookings for renter - ${renterId}`);
+    return { bookings };
+  } catch (err) {
+    winston.log("error", err);
+    return { err: err.message };
+  }
+};
+
 exports.getBookingsForPet = async function (petId) {
   try {
     const bookings = await Booking.find({ pet: petId }).lean().exec();
