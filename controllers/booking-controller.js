@@ -3,6 +3,7 @@ const moment = require("moment");
 var mongoose = require("mongoose");
 
 const bookingService = require("../services/booking-service");
+const ownerService = require("../services/owner-service");
 const petService = require("../services/pet-service");
 const paymentService = require("../services/payment-service");
 const renterService = require("../services/renter-service");
@@ -33,6 +34,49 @@ exports.getBookingDatesForPet = async function (req, res) {
   res.json(jsu.payload(dates));
 };
 
+//getBookingsForOwner
+// consider just using the user id from the authentication
+// might want some other admin to be able to use this though .. .
+exports.getBookingsForOwner = async function (req, res) {
+  const ownerId = req.params.id;
+
+  // TODO seems like a good candidate for middleware!
+  const user = req.user;
+  // TODO make a get id for authsub and cache it
+  const { owner, err: errOwner } = await ownerService.getOwnerByAuth0Sub(
+    user.sub
+  );
+  if (errOwner) return returnOtherError(res, 401, errOwner);
+  if (owner._id.toString() !== ownerId) {
+    return returnAuthorizationError(res, owner._id, ownerId);
+  }
+
+  const { bookings, err } = await bookingService.getBookingsForOwner(ownerId);
+  if (err) return returnOtherError(res, 500, err);
+  // return null for not found
+  res.json(jsu.payload(bookings));
+};
+
+//getBookingsForRenter
+exports.getBookingsForRenter = async function (req, res) {
+  const renterId = req.params.id;
+
+  const user = req.user;
+  const { renter, err: errRenter } = await renterService.getRenterByAuth0Sub(
+    user.sub
+  );
+  // should make sure that this is a 404 from the service and not something else
+  if (errRenter) returnOtherError(res, 401, errRenter);
+  if (renter._id.toString() !== renterId) {
+    return returnAuthorizationError(res, renter._id, renterId);
+  }
+
+  const { bookings, err } = await bookingService.getBookingsForRenter(renterId);
+  if (err) return returnOtherError(res, 500, err);
+  // return null for not found
+  res.json(jsu.payload(bookings));
+};
+
 /*
 This is a multi-step process:
 1. Retrieve the pet and it's current bookings.
@@ -47,6 +91,8 @@ This is a multi-step process:
 Note: I'm following my patern of having controllers talk to multiple services.
 No service should talk to any other service. Controllers (for now) don't talk to
 other controllers, just services.
+
+There are 12 steps below!
 */
 exports.createBooking = async function (req, res) {
   const { startAt, endAt, totalPrice, days, petId, paymentToken } = req.body;
@@ -55,12 +101,12 @@ exports.createBooking = async function (req, res) {
   // move to booking service
   const bookingId = mongoose.Types.ObjectId();
 
-  winston.info("BookingService. CB. getRenter");
+  winston.info("BookingService. CB1. getRenter");
   const { renter, err: errGetRenter } = await renterService.getRenterByAuth0Sub(
     user.sub
   );
 
-  winston.info("BookingService. CB. getPet");
+  winston.info("BookingService. CB2. getPet");
   const {
     pet: foundPet,
     errGetPet,
@@ -70,7 +116,7 @@ exports.createBooking = async function (req, res) {
   }
   winston.info(foundPet);
 
-  winston.info("BookingService. CB. checkOwner");
+  winston.info("BookingService. CB3. checkOwner");
   // this will have to check sub, not id
   if (foundPet.owner._id.toString() === renter._id.toString()) {
     return errorUtil.errorRes(
@@ -81,7 +127,7 @@ exports.createBooking = async function (req, res) {
     );
   }
 
-  winston.info("BookingService. CB. isValid");
+  winston.info("BookingService. CB4. isValid");
   if (!isValidBooking(startAt, endAt, foundPet)) {
     return errorUtil.errorRes(
       res,
@@ -91,7 +137,7 @@ exports.createBooking = async function (req, res) {
     );
   }
 
-  winston.info("BookingService. CB. createStripeCustomer");
+  winston.info("BookingService. CB5. createStripeCustomer");
   const { customer, errStripe } = await stripeService.createStripeCustomer(
     renter.email,
     paymentToken
@@ -108,11 +154,11 @@ exports.createBooking = async function (req, res) {
   ///////////////////////////////////////////////////////////////
   // All the operations below should be in a transaction
   // Fail fast and return an error
-  winston.info("BookingService. CB. startTransaction");
+  winston.info("BookingService. CB6. startTransaction");
   const session = await transactionHelper.startTransaction();
 
   // can't go on if this fails.
-  winston.info("BookingService. CB. updateSwipeCustomerId");
+  winston.info("BookingService. CB7. updateSwipeCustomerId");
   const {
     renter: renterUpdatedSwipe,
     err: errRenterSwipe,
@@ -127,7 +173,7 @@ exports.createBooking = async function (req, res) {
   }
 
   // create payment record
-  winston.info("BookingService. CB. createPayment");
+  winston.info("BookingService. CB8. createPayment");
   const { payment, errPayment } = await paymentService.createPayment(
     customer,
     bookingId,
@@ -155,7 +201,7 @@ exports.createBooking = async function (req, res) {
   };
 
   // save booking
-  winston.info("BookingService. CB. addBooking");
+  winston.info("BookingService. CB9. addBooking");
   const { booking, err: errBooking } = await bookingService.addBooking(
     bookingData,
     session
@@ -166,7 +212,7 @@ exports.createBooking = async function (req, res) {
   }
 
   // update pet
-  winston.info("BookingService. CB. addBookingToPet");
+  winston.info("BookingService. CB10. addBookingToPet");
   const { pet: petUpdated, err: errPet } = await petService.addBookingToPet(
     foundPet._id,
     booking._id,
@@ -178,7 +224,7 @@ exports.createBooking = async function (req, res) {
   }
 
   // update renter
-  winston.info("BookingService. CB. addBookingToRenter");
+  winston.info("BookingService. CB11. addBookingToRenter");
   const {
     renter: renterUpdated,
     err: errRenter,
@@ -189,7 +235,7 @@ exports.createBooking = async function (req, res) {
   }
 
   // commit we are done!!!!!!!!!
-  winston.info("BookingService. CB. commitTransaction");
+  winston.info("BookingService. CB12. commitTransaction");
   await transactionHelper.commitTransaction(session);
 
   ///////////////////////////////////////////////////////////////
@@ -228,4 +274,19 @@ function isValidBooking(startAt, endAt, pet) {
     });
   }
   return isValid;
+}
+
+//////////////////////////////////////////////////////////
+
+function returnAuthorizationError(res, userId, requestedId) {
+  return errorUtil.errorRes(
+    res,
+    403,
+    "Authorization Error",
+    `${userId} does not have access to bookings for ${requestedId}`
+  );
+}
+
+function returnOtherError(res, code, err) {
+  return errorUtil.errorRes(res, code, "Owner Error", err);
 }

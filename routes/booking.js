@@ -10,8 +10,20 @@ router.post("/", auth_mw, bookingController.createBooking);
 
 router.get(
   "/dates/pet/:id",
-  validateObjectId_mw,
+  [validateObjectId_mw],
   bookingController.getBookingDatesForPet
+);
+
+router.get(
+  "/owner/:id",
+  [validateObjectId_mw, auth_mw],
+  bookingController.getBookingsForOwner
+);
+
+router.get(
+  "/renter/:id",
+  [validateObjectId_mw, auth_mw],
+  bookingController.getBookingsForRenter
 );
 
 module.exports = router;

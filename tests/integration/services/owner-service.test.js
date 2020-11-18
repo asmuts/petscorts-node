@@ -5,7 +5,7 @@ const petService = require("../../../services/pet-service");
 const express = require("express");
 var mongoose = require("mongoose");
 
-describe("/pet-service", () => {
+describe("/owner-service", () => {
   beforeAll(async () => {
     app = require("../../../index");
     // await setupOwner();
@@ -35,6 +35,8 @@ describe("/pet-service", () => {
 
   ///////////////////////////////////////////////
   describe("getAllOwners", () => {
+    jest.setTimeout(10000);
+
     let owner;
 
     beforeEach(async () => {

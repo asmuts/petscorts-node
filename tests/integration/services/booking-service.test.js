@@ -155,6 +155,37 @@ describe("/booking-service", () => {
     });
   });
 
+  describe("getBookingsForRenter", () => {
+    it("should retrieve booking", async () => {
+      let bookingData = {
+        startAt: "01/01/2030",
+        endAt: "01/05/2030",
+        totalPrice: "4",
+        days: 4,
+        renterId: newRenter._id,
+        ownerId: newOwner._id,
+        petId: newPet._id,
+        //paymentId: payment._id,
+      };
+
+      // Store it
+      const result = await bookingService.addBooking(bookingData);
+      const storedBooking = result.booking;
+
+      // Get the booking by owner
+      const { bookings, err } = await bookingService.getBookingsForRenter(
+        newRenter._id
+      );
+      const retrievedBookingsByRenter = bookings;
+      expect(retrievedBookingsByRenter[0]._id).toBeTruthy();
+
+      const found = retrievedBookingsByRenter.find((booking) =>
+        booking._id.equals(storedBooking._id)
+      );
+      expect(found).toBeTruthy();
+    });
+  });
+
   describe("getBookingsForPet", () => {
     jest.setTimeout(10000);
 
