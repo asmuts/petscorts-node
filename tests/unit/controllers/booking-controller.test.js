@@ -54,9 +54,7 @@ describe("getBookingsForOwner", () => {
     bookingService.getBookingsForOwner = jest
       .fn()
       .mockReturnValue({ bookings: bookingData.twoBookings });
-    ownerService.getOwnerByAuth0Sub = jest
-      .fn()
-      .mockReturnValue({ owner: { _id: ownerId } });
+    ownerService.getOwnerIdForAuth0Sub = jest.fn().mockReturnValue({ ownerId });
 
     var request = httpMocks.createRequest({
       params: {
@@ -71,15 +69,13 @@ describe("getBookingsForOwner", () => {
     await bookingController.getBookingsForOwner(request, response);
     var result = response._getJSONData();
     expect(bookingService.getBookingsForOwner).toHaveBeenCalled();
-    expect(ownerService.getOwnerByAuth0Sub).toHaveBeenCalled();
+    expect(ownerService.getOwnerIdForAuth0Sub).toHaveBeenCalled();
     expect(result.data.length).toBe(2);
   });
 
   it("should return an error if the owner is different", async () => {
     const ownerId = "000000000000000000000000";
-    ownerService.getOwnerByAuth0Sub = jest
-      .fn()
-      .mockReturnValue({ owner: { _id: ownerId } });
+    ownerService.getOwnerIdForAuth0Sub = jest.fn().mockReturnValue({ ownerId });
 
     var request = httpMocks.createRequest({
       params: {
@@ -93,7 +89,7 @@ describe("getBookingsForOwner", () => {
 
     await bookingController.getBookingsForOwner(request, response);
     var result = response._getJSONData();
-    expect(ownerService.getOwnerByAuth0Sub).toHaveBeenCalled();
+    expect(ownerService.getOwnerIdForAuth0Sub).toHaveBeenCalled();
     expect(result.error).toBeTruthy();
     expect(result.error.code).toBe(403);
     expect(result.data).toBeFalsy();
@@ -107,9 +103,9 @@ describe("getBookingsForRenter", () => {
     bookingService.getBookingsForRenter = jest
       .fn()
       .mockReturnValue({ bookings: bookingData.twoBookings });
-    renterService.getRenterByAuth0Sub = jest
+    renterService.getRenterIdForAuth0Sub = jest
       .fn()
-      .mockReturnValue({ renter: { _id: renterId } });
+      .mockReturnValue({ renterId });
 
     var request = httpMocks.createRequest({
       params: {
@@ -124,15 +120,15 @@ describe("getBookingsForRenter", () => {
     await bookingController.getBookingsForRenter(request, response);
     var result = response._getJSONData();
     expect(bookingService.getBookingsForRenter).toHaveBeenCalled();
-    expect(ownerService.getOwnerByAuth0Sub).toHaveBeenCalled();
+    expect(renterService.getRenterIdForAuth0Sub).toHaveBeenCalled();
     expect(result.data.length).toBe(2);
   });
 
   it("should return an error if the renter is different", async () => {
     const renterId = "000000000000000000000000";
-    renterService.getRenterByAuth0Sub = jest
+    renterService.getRenterIdForAuth0Sub = jest
       .fn()
-      .mockReturnValue({ renter: { _id: renterId } });
+      .mockReturnValue({ renterId });
 
     var request = httpMocks.createRequest({
       params: {
@@ -146,7 +142,7 @@ describe("getBookingsForRenter", () => {
 
     await bookingController.getBookingsForRenter(request, response);
     var result = response._getJSONData();
-    expect(ownerService.getOwnerByAuth0Sub).toHaveBeenCalled();
+    expect(renterService.getRenterIdForAuth0Sub).toHaveBeenCalled();
     expect(result.error).toBeTruthy();
     expect(result.error.code).toBe(403);
     expect(result.data).toBeFalsy();

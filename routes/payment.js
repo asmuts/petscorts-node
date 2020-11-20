@@ -6,6 +6,16 @@ const prodBlock_mw = require("./middleware/prod-block-mw");
 
 const router = express.Router();
 
-//router.post("/", auth_mw, bookingController.addBooking);
+router.post(
+  "/:id",
+  [validateObjectId_mw, auth_mw],
+  paymentController.confirmPayment
+);
+
+router.delete(
+  "/:id",
+  [validateObjectId_mw, auth_mw],
+  paymentController.declinePayment
+);
 
 module.exports = router;

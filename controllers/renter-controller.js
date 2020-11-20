@@ -103,12 +103,12 @@ function getRenterDataFromRequest(req) {
 
 //////////////////////////////////////////////////////////
 
-function returnNotFoundError(res, ownerId) {
+function returnNotFoundError(res, value) {
   return errorUtil.errorRes(
     res,
     404,
     "Renter Error",
-    `No renter for id ${ownerId}`
+    `No renter for  ${value}`
   );
 }
 

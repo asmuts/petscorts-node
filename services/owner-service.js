@@ -3,6 +3,14 @@ const winston = require("winston");
 const Owner = require("./models/owner");
 const mongoose = require("mongoose");
 
+const Cache = require("./util/cache");
+
+const ownerIdCache = new Cache({
+  stdTTL: 60 * 60 * 6, // 6 hours
+  checkperiod: 3600,
+  maxKeys: 10000,
+});
+
 // For testing. Limit the max results for safety.
 // prod block mw on route
 exports.getAllOwners = async function () {
@@ -50,6 +58,33 @@ exports.getOwnerByEmail = async function (email) {
   }
 };
 
+// This is called frequently for authorization. Cache.
+// This data will never change.
+exports.getOwnerIdForAuth0Sub = async function (auth0_sub) {
+  const key = "idForSub:" + auth0_sub;
+  let ownerId = ownerIdCache.get(key);
+  if (ownerId) {
+    //winston.info("Cache hit for sub");
+    return { ownerId };
+  }
+  try {
+    const { owner, err } = await this.getOwnerByAuth0Sub(auth0_sub);
+    if (err) {
+      return { err };
+    }
+    if (owner) {
+      //winston.info("adding id to cache");
+      const stringId = owner._id.toString();
+      ownerIdCache.put(key, stringId);
+      return { ownerId: stringId };
+    }
+    return {};
+  } catch (err) {
+    //winston.log("error", err.message);
+    return { err: err.message };
+  }
+};
+
 // Uniqueness from Auth) can't be garuanteed by email from Auth0
 // unless email is verified. Someone could fake another user by signing
 // up via username and password with someone elsel's password.
@@ -75,9 +110,6 @@ exports.getOwnerByAuth0SubWithPets = async function (auth0_sub) {
     if (owner) {
       winston.info(
         `OwnerService. owner for auth0_sub with pets: ${auth0_sub} - ${owner._id}`
-      );
-      winston.debug(
-        `OwnerService. Found owner for auth0_sub with pets: ${auth0_sub} - ${owner}`
       );
     }
     return { owner };

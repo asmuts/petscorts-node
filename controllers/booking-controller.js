@@ -43,12 +43,13 @@ exports.getBookingsForOwner = async function (req, res) {
   // TODO seems like a good candidate for middleware!
   const user = req.user;
   // TODO make a get id for authsub and cache it
-  const { owner, err: errOwner } = await ownerService.getOwnerByAuth0Sub(
-    user.sub
-  );
+  const {
+    ownerId: userOId,
+    err: errOwner,
+  } = await ownerService.getOwnerIdForAuth0Sub(user.sub);
   if (errOwner) return returnOtherError(res, 401, errOwner);
-  if (owner._id.toString() !== ownerId) {
-    return returnAuthorizationError(res, owner._id, ownerId);
+  if (userOId !== ownerId) {
+    return returnAuthorizationError(res, userOId, ownerId);
   }
 
   const { bookings, err } = await bookingService.getBookingsForOwner(ownerId);
@@ -62,13 +63,14 @@ exports.getBookingsForRenter = async function (req, res) {
   const renterId = req.params.id;
 
   const user = req.user;
-  const { renter, err: errRenter } = await renterService.getRenterByAuth0Sub(
-    user.sub
-  );
+  const {
+    renterId: userRId,
+    err: errRenter,
+  } = await renterService.getRenterIdForAuth0Sub(user.sub);
   // should make sure that this is a 404 from the service and not something else
   if (errRenter) returnOtherError(res, 401, errRenter);
-  if (renter._id.toString() !== renterId) {
-    return returnAuthorizationError(res, renter._id, renterId);
+  if (userRId !== renterId) {
+    return returnAuthorizationError(res, userRId, renterId);
   }
 
   const { bookings, err } = await bookingService.getBookingsForRenter(renterId);
@@ -288,5 +290,5 @@ function returnAuthorizationError(res, userId, requestedId) {
 }
 
 function returnOtherError(res, code, err) {
-  return errorUtil.errorRes(res, code, "Owner Error", err);
+  return errorUtil.errorRes(res, code, "Booking Error", err);
 }
