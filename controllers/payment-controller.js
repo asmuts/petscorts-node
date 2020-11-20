@@ -1,16 +1,22 @@
 const winston = require("winston");
 const bookingService = require("../services/booking-service");
+const ownerService = require("../services/owner-service");
 const petService = require("../services/pet-service");
 const paymentService = require("../services/payment-service");
 const stripeService = require("../services/stripe-service");
 const errorUtil = require("./util/error-util");
 const transactionHelper = require("../services/util/transaction-helper");
 
+// TODO finish. This is a sketch.
+
 exports.getPendingPayments = async function (req, res) {
   // TODO take this as a param
   // have middleware match the ids
   const user = req.user;
-  const ownerId = user._id;
+  const { ownerId, err: errOwner } = await ownerService.getOwnerIdForAuth0Sub(
+    user.sub
+  );
+  if (ownerId) return returnOtherError(res, 401, errOwner);
 
   const { payments, err } = await paymentService.getPendingPayments(ownerId);
   if (err) {
@@ -32,7 +38,7 @@ This is called when an owner declines a booking.
 TODO clean this up. Add transaction support.
 */
 exports.declinePayment = async function (req, res) {
-  const paymentId = req.params.paymentId;
+  const paymentId = req.params.id;
 
   // Can't go on if this fails.
   let { payment, err } = await paymentService.getPaymentById(paymentId);
@@ -90,10 +96,21 @@ exports.declinePayment = async function (req, res) {
 
 */
 exports.confirmPayment = async function (req, res) {
-  const paymentId = req.params.paymentId;
+  const paymentId = req.params.id;
   let { payment, err } = await paymentService.getPaymentById(paymentId);
   if (err) {
     return errorUtil.errorRes(res, 422, "Payment error", err);
+  }
+
+  // TODO seems like a good candidate for middleware!
+  const user = req.user;
+  // TODO make a get id for authsub and cache it
+  const { ownerId, err: errOwner } = await ownerService.getOwnerIdForAuth0Sub(
+    user.sub
+  );
+  if (ownerId) return returnOtherError(res, 401, errOwner);
+  if (payment.owner._id.toString() !== ownerId) {
+    return returnAuthorizationError(res, payment.owner._id.toString(), ownerId);
   }
 
   // Might also want to try if it is REFUNDED
@@ -182,4 +199,19 @@ async function refundCharge(res, charge, payment) {
   if (errRefunStore) {
     return errorUtil.errorRes(res, 422, "Payment error", errRefunStore);
   }
+}
+
+//////////////////////////////////////////////////////////
+
+function returnAuthorizationError(res, userId, requestedId) {
+  return errorUtil.errorRes(
+    res,
+    403,
+    "Authorization Error",
+    `${userId} does not have access to paymenr for ${requestedId}`
+  );
+}
+
+function returnOtherError(res, code, err) {
+  return errorUtil.errorRes(res, code, "Payment Error", err);
 }

@@ -69,8 +69,11 @@ exports.getBookingsForOwner = async function (ownerId) {
   try {
     const bookings = await Booking.find({ owner: ownerId })
       .populate("pet")
+      .populate("payment")
       .exec();
-    winston.info(`Found ${bookings.length} bookings for owner - ${ownerId}`);
+    winston.info(
+      `BookingService. Found ${bookings.length} bookings for owner - ${ownerId}`
+    );
     return { bookings };
   } catch (err) {
     winston.log("error", err);
@@ -83,7 +86,9 @@ exports.getBookingsForRenter = async function (renterId) {
     const bookings = await Booking.find({ renter: renterId })
       .populate("pet")
       .exec();
-    winston.info(`Found ${bookings.length} bookings for renter - ${renterId}`);
+    winston.info(
+      `BookingService. Found ${bookings.length} bookings for renter - ${renterId}`
+    );
     return { bookings };
   } catch (err) {
     winston.log("error", err);
@@ -94,7 +99,9 @@ exports.getBookingsForRenter = async function (renterId) {
 exports.getBookingsForPet = async function (petId) {
   try {
     const bookings = await Booking.find({ pet: petId }).lean().exec();
-    winston.info(`Found ${bookings.length} bookings for pet - ${petId}`);
+    winston.info(
+      `BookingService. Found ${bookings.length} bookings for pet - ${petId}`
+    );
     return { bookings };
   } catch (err) {
     winston.log("error", err);
