@@ -197,11 +197,17 @@ exports.addBookingToPet = async function (petId, bookingId, session) {
   }
 };
 
-exports.removeBookingFromPet = async function (petId, bookingId) {
+exports.removeBookingFromPet = async function (petId, bookingId, session) {
   try {
     const pet = await Pet.findById(petId);
-    pet.bookings.pull(bookingId);
-    await pet.save();
+    if (pet) {
+      pet.bookings.pull(bookingId);
+      await pet.save(session);
+    } else {
+      winston.info(
+        "PetService. removeBookingFromPet. No pet found for id " + petId
+      );
+    }
     return { pet };
   } catch (err) {
     winston.log("error", err);
@@ -213,12 +219,12 @@ exports.removeBookingFromPet = async function (petId, bookingId) {
 // TODO make a method to revive
 exports.archivePet = async function (petId) {
   winston.info(`PetService. Archiving Pet - id: ${petId}`);
-  return await updatePetStatus(petId, STATUS.ARCHIVED);
+  return await updatePetStatus(petId, this.STATUS.ARCHIVED);
 };
 
 exports.activatePet = async function (petId) {
   winston.info(`PetService. Archiving Pet - id: ${petId}`);
-  return await updatePetStatus(petId, STATUS.ACTIVE);
+  return await updatePetStatus(petId, this.STATUS.ACTIVE);
 };
 
 const updatePetStatus = async (petId, newStatus) => {
@@ -226,7 +232,7 @@ const updatePetStatus = async (petId, newStatus) => {
     const pet = await Pet.findByIdAndUpdate(
       petId,
       {
-        status: STATUS.newStatus,
+        status: newStatus,
       },
       {
         new: true,

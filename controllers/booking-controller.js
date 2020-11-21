@@ -47,7 +47,7 @@ exports.getBookingsForOwner = async function (req, res) {
     ownerId: userOId,
     err: errOwner,
   } = await ownerService.getOwnerIdForAuth0Sub(user.sub);
-  if (errOwner) return returnOtherError(res, 401, errOwner);
+  if (errOwner) return returnOtherError(res, 500, errOwner);
   if (userOId !== ownerId) {
     return returnAuthorizationError(res, userOId, ownerId);
   }
@@ -180,7 +180,7 @@ exports.createBooking = async function (req, res) {
     customer,
     bookingId,
     renter._id,
-    foundPet.owner_id,
+    foundPet.owner._id,
     totalPrice,
     paymentToken,
     session

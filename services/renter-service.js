@@ -131,8 +131,18 @@ exports.addBookingToRenter = async function (renterId, bookingId, session) {
 };
 
 // Crude tally
-exports.addToRevenue = async function (renterId, amount) {
-  Renter.update({ _id: renterId }, { $inc: { revenue: amount } });
+exports.addToRevenue = async function (renterId, amount, session) {
+  try {
+    const renter = await Renter.update(
+      { _id: renterId },
+      { $inc: { revenue: amount } },
+      { session, new: true }
+    );
+    return { renter };
+  } catch (err) {
+    winston.log("error", err.message);
+    return { err: err.message };
+  }
 };
 
 // TODO: if email has changed, check uniqueness
