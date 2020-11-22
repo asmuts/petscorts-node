@@ -1,4 +1,11 @@
-const express = require("express");
+//const express = require("express");
+// const mongoose = require("mongoose");
+// const { MongoMemoryServer } = require("mongodb-memory-server");
+// const winston = require("winston");
+// const console = new winston.transports.Console();
+// winston.add(console);
+
+const MongoMemHelper = require("../../util/MongoMemHelper").MongoMemHelper;
 
 const Pet = require("../../../services/models/pet");
 const Owner = require("../../../services/models/owner");
@@ -8,23 +15,48 @@ const petService = require("../../../services/pet-service");
 const bookingService = require("../../../services/booking-service");
 const transactionHelper = require("../../../services/util/transaction-helper");
 
+// let mongoServer;
+// // May require additional time for downloading MongoDB binaries
+// jasmine.DEFAULT_TIMEOUT_INTERVAL = 600000;
+
+const dbHelper = new MongoMemHelper();
+
 describe("/pet-service", () => {
   let owner;
   let renter;
 
   beforeAll(async () => {
+    await dbHelper.startDB();
+    // mongoServer = new MongoMemoryServer();
+    // const mongoUri = await mongoServer.getUri();
+    // await mongoose.connect(mongoUri, {}, (err) => {
+    //   if (err) console.error(err);
+    // });
+
     // need to run the server on a different port than nodemon
-    app = require("../../../index");
+    //app = require("../../../index");
+    //await setupOwner();
+    //await setupRenter();
+  });
+  afterAll(async () => {
+    // await Owner.remove({});
+    // await Renter.remove({});
+    // await Pet.remove({});
+    // await Booking.remove({});
+    // //const app = express();
+    // //app.close();
+    // await mongoose.disconnect();
+    // await mongoServer.stop();
+    await dbHelper.stopDB();
+  });
+
+  beforeEach(async () => {
     await setupOwner();
     await setupRenter();
   });
-  afterAll(async () => {
-    await Owner.remove({});
-    await Renter.remove({});
-    await Pet.remove({});
-    await Booking.remove({});
-    const app = express();
-    app.close();
+
+  afterEach(async () => {
+    await dbHelper.cleanup();
   });
 
   async function setupOwner() {
@@ -73,7 +105,7 @@ describe("/pet-service", () => {
     });
 
     it("should fail without location", async () => {
-      const petData = {
+      const petData2 = {
         name: "TestPet",
         city: "Providence",
         street: "100 Colonial Rd.",
@@ -85,9 +117,9 @@ describe("/pet-service", () => {
         ownerId: owner._id,
       };
 
-      const { pet, err } = await petService.addPet(petData);
-      expect(pet).toBeFalsy();
-      expect(err).toBeTruthy();
+      const { pet: pet2, err: err2 } = await petService.addPet(petData2);
+      expect(pet2).toBeFalsy();
+      expect(err2).toBeTruthy();
     });
 
     it("should fail with long state name", async () => {
@@ -105,8 +137,8 @@ describe("/pet-service", () => {
         ownerId: owner._id,
       };
 
-      const { pet, err } = await petService.addPet(petData);
-      expect(pet).toBeFalsy();
+      const { pet: pet3, err } = await petService.addPet(petData);
+      expect(pet3).toBeFalsy();
       expect(err).toBeTruthy();
       expect(err).toMatch(/state code/);
     });

@@ -7,10 +7,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest --runInBand --coverage",
+    "coverage": "jest --maxWorkers 4 --coverage",
+    "test": "jest --maxWorkers 4 --watchAll",
     "unit": "jest unit/* --watchAll",
-    "integration": "jest integration/* --runInBand --detectOpenHandles",
-    "services": "jest services/* --runInBand --detectOpenHandles --watchAll",
+    "integration": "jest integration/* --maxWorkers 4 --detectOpenHandles",
+    "services": "jest services/* --maxWorkers 4 --detectOpenHandles --watchAll",
     "start": "node server.js"
   },
   "keywords": [],
@@ -43,6 +44,7 @@
   },
   "devDependencies": {
     "jest": "^26.5.3",
+    "mongodb-memory-server": "^6.9.2",
     "node-mocks-http": "^1.9.0",
     "supertest": "^5.0.0"
   }

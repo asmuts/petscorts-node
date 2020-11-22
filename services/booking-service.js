@@ -1,7 +1,5 @@
 const winston = require("winston");
 const Booking = require("./models/booking");
-//const mongoose = require("mongoose");
-//const moment = require("moment");
 
 exports.STATUS = {
   PENDING: "PENDING",

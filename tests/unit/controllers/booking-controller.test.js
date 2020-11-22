@@ -9,6 +9,10 @@ const bookingController = require("../../../controllers/booking-controller");
 const bookingService = require("../../../services/booking-service");
 const ownerService = require("../../../services/owner-service");
 const renterService = require("../../../services/renter-service");
+const paymentService = require("../../../services/payment-service");
+const stripeService = require("../../../services/stripe-service");
+const petService = require("../../../services/pet-service");
+const transactionHelper = require("../../../services/util/transaction-helper");
 
 /////////////////////getBookingDatesForPet
 describe("getBookingDatesForPet", () => {
@@ -149,5 +153,107 @@ describe("getBookingsForRenter", () => {
   });
 });
 
-// TODO createBooking is going to require a dozen mocks to test
-// There wasn't a good alternative.  Either way, it's a monster.
+////////////////////////////////////////////////
+function setupMocksForCreateBooking(mockValues) {
+  // renterService.getRenterByAuth0Sub
+  renterService.getRenterByAuth0Sub = jest
+    .fn()
+    .mockReturnValue({ renter: { _id: mockValues.renterId } });
+
+  //petService.getPetByIdWithOwnerAndBookings(petId);
+  petService.getPetByIdWithOwnerAndBookings = jest.fn().mockReturnValue({
+    pet: { _id: mockValues.petId, owner: { _id: mockValues.ownerId } },
+  });
+
+  //stripeService.createStripeCustomer(renter.email,paymentToken);
+  stripeService.createStripeCustomer = jest
+    .fn()
+    .mockReturnValue({ customer: { id: mockValues.stripeCustomerId } });
+
+  //transactionHelper.startTransaction()
+  transactionHelper.startTransaction = jest.fn().mockReturnValue({});
+
+  //renterService.updateSwipeCustomerId(
+  renterService.updateSwipeCustomerId = jest
+    .fn()
+    .mockReturnValue({ renter: { _id: mockValues.renterId } });
+
+  //paymentService.createPayment(
+  paymentService.createPayment = jest
+    .fn()
+    .mockReturnValue({ payment: { _id: mockValues.stripePaymentId } });
+
+  //bookingService.addBooking(
+
+  bookingService.addBooking = jest
+    .fn()
+    .mockReturnValue({ booking: { _id: mockValues.bookingId } });
+
+  //petService.addBookingToPet(
+
+  petService.addBookingToPet = jest
+    .fn()
+    .mockReturnValue({ pet: { _id: mockValues.petId } });
+
+  //renterService.addBookingToRenter(
+  renterService.addBookingToRenter = jest
+    .fn()
+    .mockReturnValue({ booking: { _id: mockValues.bookingId } });
+
+  //transactionHelper.commitTransaction
+  transactionHelper.commitTransaction = jest.fn().mockReturnValue({});
+}
+
+/////////////////////getBookingDatesForPet
+describe("createBooking", () => {
+  it("should create a booking on happy path", async () => {
+    // createBooking is going to require a dozen mocks to test
+    // There wasn't a good alternative.  Either way, it's a monster.
+    const mockValues = {
+      petId: "000000",
+      renterId: "000000000",
+      bookingId: "777777",
+      ownerId: "55555",
+      stripeCustomerId: "44444",
+      stripePaymentId: "33333",
+    };
+    setupMocksForCreateBooking(mockValues);
+
+    const inputValues = {
+      startAt: new Date(),
+      endAt: new Date(),
+      totalPrice: 1,
+      days: 1,
+      petId: mockValues.petId,
+      paymentToken: "myToken",
+    };
+    var request = httpMocks.createRequest({
+      params: inputValues,
+      user: "auth0-sub",
+    });
+    var response = httpMocks.createResponse();
+
+    //This is hideous.
+
+    await bookingController.createBooking(request, response);
+
+    var result = response._getJSONData();
+    //console.log(result);
+
+    expect(renterService.getRenterByAuth0Sub).toHaveBeenCalled();
+    expect(petService.getPetByIdWithOwnerAndBookings).toHaveBeenCalled();
+    expect(stripeService.createStripeCustomer).toHaveBeenCalled();
+    expect(transactionHelper.startTransaction).toHaveBeenCalled();
+    expect(renterService.updateSwipeCustomerId).toHaveBeenCalled();
+    expect(paymentService.createPayment).toHaveBeenCalled();
+    expect(bookingService.addBooking).toHaveBeenCalled();
+    expect(petService.addBookingToPet).toHaveBeenCalled();
+    expect(renterService.addBookingToRenter).toHaveBeenCalled();
+    expect(transactionHelper.commitTransaction).toHaveBeenCalled();
+
+    expect(result.data).toBeTruthy();
+    expect(result.error).toBeFalsy();
+    expect(response.statusCode).toBe(200);
+    expect(result.data._id).toBe(mockValues.bookingId);
+  });
+});

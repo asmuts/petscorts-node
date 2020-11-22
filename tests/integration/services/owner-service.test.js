@@ -1,21 +1,26 @@
+const mongoose = require("mongoose");
+
+const MongoMemHelper = require("../../util/MongoMemHelper").MongoMemHelper;
 const Owner = require("../../../services/models/owner");
 const Pet = require("../../../services/models/pet");
 const ownerService = require("../../../services/owner-service");
 const petService = require("../../../services/pet-service");
-const express = require("express");
-var mongoose = require("mongoose");
+
+// May require additional time for downloading MongoDB binaries
+//jasmine.DEFAULT_TIMEOUT_INTERVAL = 600000;
+
+const dbHelper = new MongoMemHelper();
 
 describe("/owner-service", () => {
   beforeAll(async () => {
-    app = require("../../../index");
-    // await setupOwner();
-    // await setupRenter();
+    await dbHelper.startDB();
   });
   afterAll(async () => {
-    await Owner.remove({});
-    await Pet.remove({});
-    const app = express();
-    app.close();
+    await dbHelper.stopDB();
+  });
+
+  afterEach(async () => {
+    await dbHelper.cleanup();
   });
 
   async function setupOwner(prefix) {

@@ -76,7 +76,7 @@ exports.getBookingsForRenter = async function (req, res) {
   const { bookings, err } = await bookingService.getBookingsForRenter(renterId);
   if (err) return returnOtherError(res, 500, err);
   // return null for not found
-  res.json(jsu.payload(bookings));
+  return res.json(jsu.payload(bookings));
 };
 
 /*
@@ -242,7 +242,7 @@ exports.createBooking = async function (req, res) {
 
   ///////////////////////////////////////////////////////////////
 
-  res.json(jsu.payload(booking));
+  return res.json(jsu.payload(booking));
   //return res.json({ startAt: startAt, endAt: endAt });
 };
 
