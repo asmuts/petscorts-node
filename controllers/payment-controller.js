@@ -9,8 +9,6 @@ const errorUtil = require("./util/error-util");
 const transactionHelper = require("../services/util/transaction-helper");
 const jsu = require("./util/json-style-util");
 
-// TODO finish. This is a sketch.
-
 exports.getPendingPayments = async function (req, res) {
   // TODO take this as a param
   // have middleware match the ids
@@ -129,9 +127,9 @@ exports.declinePayment = async function (req, res) {
 
 */
 exports.confirmPayment = async function (req, res) {
-  winston.info("PaymentController. CP: getPayment");
+  winston.info("PaymentController. CP0: confirmPayment");
   const paymentId = req.params.id;
-  winston.info("PaymentController. CP: getPaymentById");
+  winston.info("PaymentController. CP1: getPaymentById");
   let { payment, err: errPLookup } = await paymentService.getPaymentById(
     paymentId
   );
@@ -141,7 +139,7 @@ exports.confirmPayment = async function (req, res) {
   winston.info(payment);
 
   // TODO seems like a good candidate for middleware!
-  winston.info("PaymentController. CP: validate owner");
+  winston.info("PaymentController. CP2: validate owner");
   const user = req.user;
   const { ownerId, err: errOwner } = await ownerService.getOwnerIdForAuth0Sub(
     user.sub
@@ -155,6 +153,7 @@ exports.confirmPayment = async function (req, res) {
   }
 
   // Might also want to try if it is REFUNDED
+  winston.info("PaymentController. CP3: check payment status");
   if (payment.status !== paymentService.STATUS.PENDING) {
     return returnOtherError(res, 422, "Payment status was not pending.");
   }
@@ -163,7 +162,7 @@ exports.confirmPayment = async function (req, res) {
 
   // call stripe service. Can't go on if this fails.
   // Total price in dollars and cents, the service will *100
-  winston.info("PaymentController. CP: Stripe charge");
+  winston.info("PaymentController. CP4: Stripe charge");
   const { charge, err: errorStripe } = await stripeService.charge(
     booking.totalPrice,
     payment.stripeCustomerId,
@@ -176,18 +175,18 @@ exports.confirmPayment = async function (req, res) {
   ///////////////////////////////////////////////////////////////
   // All the operations below should be in a transaction
   // Fail at end if errors, refund, and return an error
-  winston.info("PaymentController. CP: begin transaction");
+  winston.info("PaymentController. CP5: begin transaction");
   const session = await transactionHelper.startTransaction();
 
   try {
-    winston.info("PaymentController. CP: setPaymentToPaid");
+    winston.info("PaymentController. CP6: setPaymentToPaid");
     const {
       payment: paymentUpdated,
       err: errorPaid,
     } = await paymentService.setPaymentToPaid(paymentId, charge, session);
     if (errorPaid) throw new Error(errorPaid);
 
-    winston.info("PaymentController. CP: updateBookingStatus");
+    winston.info("PaymentController. CP7: updateBookingStatus");
     const {
       booking: bookingUpdated,
       err: errorBooking,
@@ -198,7 +197,7 @@ exports.confirmPayment = async function (req, res) {
     );
     if (errorBooking) throw new Error(errorBooking);
 
-    winston.info("PaymentController. CP: addToRevenue");
+    winston.info("PaymentController. CP8: addToRevenue");
     const { renter, err: errorRenter } = await renterService.addToRevenue(
       payment.renter._id,
       paymentUpdated.amount,
@@ -208,21 +207,21 @@ exports.confirmPayment = async function (req, res) {
   } catch (error) {
     // ABORT AND REFUND IF NEEDED
     winston.log("error", error);
-    winston.info("PaymentController. CP: abortTransaction");
+    winston.info("PaymentController. CPX abortTransaction");
     await transactionHelper.abortTransaction(session);
-    return await refundCharge(res, charge, payment);
+    return await refundCharge(res, charge, payment, error.message);
   }
 
-  winston.info("PaymentController. CP: commitTransaction");
+  winston.info("PaymentController. CP9: commitTransaction");
   await transactionHelper.commitTransaction(session);
   ////////////////////////////////////////
 
-  res.json(jsu.payload(payment));
+  return res.json(jsu.payload(payment));
 };
 //////////////////////////////////////////////////////////////
 
 // Refund and store the refundId on the payment record
-async function refundCharge(res, charge, payment) {
+async function refundCharge(res, charge, payment, orginalError) {
   const { refund, err: errRefund } = await stripeService.refund(charge.id);
   if (errRefund) {
     // REALLY BAD NEWS!!!! The gods frown upon us.
@@ -235,11 +234,12 @@ async function refundCharge(res, charge, payment) {
   }
   const {
     payment: refundPayment,
-    err: errRefunStore,
+    err: errRefundStore,
   } = await paymentService.setPaymentToRefunded(payment._id, refund);
-  if (errRefunStore) {
-    return errorUtil.errorRes(res, 422, "Payment error", errRefunStore);
+  if (errRefundStore) {
+    return errorUtil.errorRes(res, 422, "Payment error", errRefundStore);
   }
+  return errorUtil.errorRes(res, 422, "Payment error", orginalError);
 }
 
 //////////////////////////////////////////////////////////
