@@ -1,6 +1,8 @@
-let app;
-const request = require("supertest");
 const moment = require("moment");
+
+//const mongoose = require("mongoose");
+
+const MongoMemHelper = require("../../util/MongoMemHelper").MongoMemHelper;
 
 const bookingService = require("../../../services/booking-service");
 const Owner = require("../../../services/models/owner");
@@ -8,21 +10,21 @@ const Renter = require("../../../services/models/renter");
 const Pet = require("../../../services/models/pet");
 const Booking = require("../../../services/models/booking");
 
+const dbHelper = new MongoMemHelper();
+
 describe("/booking-service", () => {
   let newOwner, newRenter, newPet;
 
   beforeAll(async () => {
-    // need to run the server on a different port than nodemon
-    app = require("../../../index");
+    await dbHelper.startDB();
     await setupOwnerRenterPet();
   });
   afterAll(async () => {
-    await Owner.remove({});
-    await Renter.remove({});
-    await Pet.remove({});
-    await Booking.remove({});
-    const app = express();
-    app.close();
+    await dbHelper.stopDB();
+  });
+
+  afterEach(async () => {
+    await dbHelper.cleanup();
   });
 
   async function setupOwnerRenterPet() {
@@ -52,6 +54,7 @@ describe("/booking-service", () => {
       breed: "mutt",
       description: "Small hairy beast.",
       dailyRentalRate: "100",
+      location: { type: "Point", coordinates: [1, 2] },
       ownerId: newOwner._id,
     });
     await newPet.save();

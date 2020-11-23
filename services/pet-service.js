@@ -271,8 +271,8 @@ exports.validatePet = function (pet) {
     description: Joi.string().required().min(3),
     dailyRentalRate: Joi.number().required().min(0),
     ownerId: Joi.objectId().required(),
-    lat: Joi.string().optional,
-    lng: Joi.string().optional,
+    lat: Joi.string().required,
+    lng: Joi.string().required,
   });
   return schema.validate(pet);
 };

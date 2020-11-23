@@ -10,6 +10,7 @@ const renterService = require("../services/renter-service");
 const stripeService = require("../services/stripe-service");
 const transactionHelper = require("../services/util/transaction-helper");
 const errorUtil = require("./util/error-util");
+const ControllerError = require("./util/ControllerError");
 const jsu = require("./util/json-style-util");
 
 /*
@@ -76,19 +77,19 @@ exports.getBookingsForRenter = async function (req, res) {
   const { bookings, err } = await bookingService.getBookingsForRenter(renterId);
   if (err) return returnOtherError(res, 500, err);
   // return null for not found
-  res.json(jsu.payload(bookings));
+  return res.json(jsu.payload(bookings));
 };
 
 /*
 This is a multi-step process:
-1. Retrieve the pet and it's current bookings.
-2. Validate the proposed booking to make sure there aren't
+. Retrieve the pet and it's current bookings.
+. Validate the proposed booking to make sure there aren't
   existing bookings for overlapping dates.
-3. Store the payment info with stripe and get a token use later
+. Store the payment info with stripe and get a token use later
   The token refers to the card. We will charge it later when the
   owner accepts the booking.
-4. Update the renter with the stripe token.
-5. Create a payment record.
+. Update the renter with the stripe token.
+. Create a payment record.
 
 Note: I'm following my patern of having controllers talk to multiple services.
 No service should talk to any other service. Controllers (for now) don't talk to
@@ -97,60 +98,34 @@ other controllers, just services.
 There are 12 steps below!
 */
 exports.createBooking = async function (req, res) {
+  // TODO validate the input
   const { startAt, endAt, totalPrice, days, petId, paymentToken } = req.body;
   const user = req.user;
 
-  // move to booking service
+  // TODO move to booking service
   const bookingId = mongoose.Types.ObjectId();
 
-  winston.info("BookingService. CB1. getRenter");
-  const { renter, err: errGetRenter } = await renterService.getRenterByAuth0Sub(
-    user.sub
-  );
+  let renter;
+  let customer;
+  let pet;
+  try {
+    winston.info("BookingService. CB1. getRenter");
+    renter = await getRenter(user.sub);
 
-  winston.info("BookingService. CB2. getPet");
-  const {
-    pet: foundPet,
-    errGetPet,
-  } = await petService.getPetByIdWithOwnerAndBookings(petId);
-  if (errGetPet) {
-    return errorUtil.errorRes(res, 422, "Booking error", errGetPet);
-  }
-  winston.info(foundPet);
+    winston.info("BookingService. CB2. getPet");
+    pet = await getPet(petId);
 
-  winston.info("BookingService. CB3. checkOwner");
-  // this will have to check sub, not id
-  if (foundPet.owner._id.toString() === renter._id.toString()) {
-    return errorUtil.errorRes(
-      res,
-      422,
-      "Booking error",
-      "Cannot create booking on your pet."
-    );
-  }
+    winston.info("BookingService. CB3. checkOwner");
+    checkIfAllowed(pet, renter);
 
-  winston.info("BookingService. CB4. isValid");
-  if (!isValidBooking(startAt, endAt, foundPet)) {
-    return errorUtil.errorRes(
-      res,
-      422,
-      "Availability Error",
-      "The dates selected are no longer available"
-    );
-  }
+    winston.info("BookingService. CB4. isValid");
+    checkIfBookingValid(startAt, endAt, pet);
 
-  winston.info("BookingService. CB5. createStripeCustomer");
-  const { customer, errStripe } = await stripeService.createStripeCustomer(
-    renter.email,
-    paymentToken
-  );
-  if (errStripe) {
-    return errorUtil.errorRes(
-      res,
-      422,
-      "Booking error",
-      "Cannot process payment."
-    );
+    winston.info("BookingService. CB5. createStripeCustomer");
+    customer = await callCreateStripeCustomer(renter, paymentToken);
+  } catch (error) {
+    winston.log("error", "Booking failed before transaction. " + error.message);
+    return returnOtherError(res, 422, error);
   }
 
   ///////////////////////////////////////////////////////////////
@@ -159,8 +134,119 @@ exports.createBooking = async function (req, res) {
   winston.info("BookingService. CB6. startTransaction");
   const session = await transactionHelper.startTransaction();
 
-  // can't go on if this fails.
-  winston.info("BookingService. CB7. updateSwipeCustomerId");
+  let booking;
+  try {
+    winston.info("BookingService. CB7. updateSwipeCustomerId");
+    await updateRenterWithStripe(renter, customer, session);
+
+    winston.info("BookingService. CB8. createPayment");
+    const paymentData = {
+      customer,
+      bookingId,
+      renterId: renter._id,
+      ownerId: pet.owner._id,
+      totalPrice,
+      paymentToken,
+    };
+    let payment = await createPayment(paymentData, session);
+
+    winston.info("BookingService. CB9. addBooking");
+    const bookingData = {
+      _id: bookingId,
+      startAt,
+      endAt,
+      totalPrice,
+      days,
+      renterId: renter._id,
+      ownerId: pet.owner._id,
+      petId: pet._id,
+      paymentId: payment._id,
+    };
+    booking = await addBooking(bookingData, session);
+
+    winston.info("BookingService. CB10. addBookingToPet");
+    await addBookingToPet(pet, booking, session);
+
+    winston.info("BookingService. CB11. addBookingToRenter");
+    await addBookingToRenter(renter, booking, session);
+
+    winston.info("BookingService. CB12. commitTransaction");
+    await transactionHelper.commitTransaction(session);
+  } catch (error) {
+    winston.log("error", "Booking failed during transaction. " + error.message);
+    await transactionHelper.abortTransaction(session);
+    return returnOtherError(res, 422, error);
+  }
+
+  return res.json(jsu.payload(booking));
+};
+
+//////////////////////////////////////////////////////////////
+// CREATE BOOKING STEP 1
+async function getRenter(sub) {
+  const { renter, err: errGetRenter } = await renterService.getRenterByAuth0Sub(
+    sub
+  );
+  if (!renter || !renter._id) {
+    const message = "No renter for sub found.";
+    throw new ControllerError("Booking error", message);
+  }
+  if (errGetRenter) {
+    throw new ControllerError("Booking error", errGetRenter);
+  }
+  return renter;
+}
+
+// CREATE BOOKING STEP 2
+async function getPet(petId) {
+  const {
+    pet: pet,
+    errGetPet,
+  } = await petService.getPetByIdWithOwnerAndBookings(petId);
+  if (!pet || !pet._id) {
+    const message = "No pet found for id.";
+    throw new ControllerError("Booking error", message);
+  }
+  if (errGetPet) {
+    throw new ControllerError("Booking error", errGetPet);
+  }
+  winston.info(pet);
+  return pet;
+}
+
+// CREATE BOOKING STEP 3
+function checkIfAllowed(pet, renter) {
+  if (pet.owner._id.toString() === renter._id.toString()) {
+    throw new ControllerError(
+      "Booking error",
+      "Cannot create booking on your pet."
+    );
+  }
+}
+// CREATE BOOKING STEP 4
+function checkIfBookingValid(startAt, endAt, pet) {
+  if (!isValidBooking(startAt, endAt, pet)) {
+    throw new ControllerError(
+      "Availability Error",
+      "The dates selected are no longer available"
+    );
+  }
+}
+
+// CREATE BOOKING STEP 5
+async function callCreateStripeCustomer(renter, paymentToken) {
+  const { customer, err: errStripe } = await stripeService.createStripeCustomer(
+    renter.email,
+    paymentToken
+  );
+  if (errStripe) {
+    throw new ControllerError("Booking error", "Cannot process payment.");
+  }
+  return customer;
+}
+
+// CREATE BOOKING STEP 7
+async function updateRenterWithStripe(renter, customer, session) {
   const {
     renter: renterUpdatedSwipe,
     err: errRenterSwipe,
@@ -170,81 +256,61 @@ exports.createBooking = async function (req, res) {
     session
   );
   if (errRenterSwipe) {
-    await transactionHelper.abortTransaction(session);
-    return errorUtil.errorRes(res, 422, "Payment error", errRenterSwipe);
+    throw new ControllerError("Payment error", errRenterSwipe);
   }
+}
 
-  // create payment record
-  winston.info("BookingService. CB8. createPayment");
-  const { payment, errPayment } = await paymentService.createPayment(
-    customer,
-    bookingId,
-    renter._id,
-    foundPet.owner._id,
-    totalPrice,
-    paymentToken,
+// CREATE BOOKING STEP 8
+async function createPayment(paymentData, session) {
+  const { payment, err: errPayment } = await paymentService.createPayment(
+    paymentData.customer,
+    paymentData.bookingId,
+    paymentData.renterId,
+    paymentData.ownerId,
+    paymentData.totalPrice,
+    paymentData.paymentToken,
     session
   );
   if (errPayment) {
-    await transactionHelper.abortTransaction(session);
-    return errorUtil.errorRes(res, 422, "Payment error", errPayment);
+    throw new ControllerError("Payment error", errPayment);
   }
+  return payment;
+}
 
-  let bookingData = {
-    _id: bookingId,
-    startAt,
-    endAt,
-    totalPrice,
-    days,
-    renterId: renter._id,
-    ownerId: foundPet.owner._id,
-    petId: foundPet._id,
-    paymentId: payment._id,
-  };
-
-  // save booking
-  winston.info("BookingService. CB9. addBooking");
+// CREATE BOOKING STEP 9
+async function addBooking(bookingData, session) {
   const { booking, err: errBooking } = await bookingService.addBooking(
     bookingData,
     session
   );
   if (errBooking) {
-    await transactionHelper.abortTransaction(session);
-    return errorUtil.errorRes(res, 422, "Payment error", errBooking);
+    throw new ControllerError("Booking error", errBooking);
   }
+  return booking;
+}
 
-  // update pet
-  winston.info("BookingService. CB10. addBookingToPet");
+// CREATE BOOKING STEP 10
+async function addBookingToPet(pet, booking, session) {
   const { pet: petUpdated, err: errPet } = await petService.addBookingToPet(
-    foundPet._id,
+    pet._id,
     booking._id,
     session
   );
   if (errPet) {
-    await transactionHelper.abortTransaction(session);
-    return errorUtil.errorRes(res, 422, "Payment error", errPet);
+    throw new ControllerError("Booking error", errPet);
   }
+}
 
-  // update renter
-  winston.info("BookingService. CB11. addBookingToRenter");
+// CREATE BOOKING STEP 11
+async function addBookingToRenter(renter, booking, session) {
   const {
     renter: renterUpdated,
     err: errRenter,
   } = await renterService.addBookingToRenter(renter._id, booking._id, session);
   if (errRenter) {
-    await transactionHelper.abortTransaction(session);
-    return errorUtil.errorRes(res, 422, "Payment error", errRenter);
+    throw new ControllerError("Booking error", errRenter);
   }
-
-  // commit we are done!!!!!!!!!
-  winston.info("BookingService. CB12. commitTransaction");
-  await transactionHelper.commitTransaction(session);
-
-  ///////////////////////////////////////////////////////////////
-
-  res.json(jsu.payload(booking));
-  //return res.json({ startAt: startAt, endAt: endAt });
-};
+}
 
 /*
   Make sure that the proposed booking doesn't overlap
@@ -290,5 +356,7 @@ function returnAuthorizationError(res, userId, requestedId) {
 }
 
 function returnOtherError(res, code, err) {
-  return errorUtil.errorRes(res, code, "Booking Error", err);
+  let title = err.title ? err.title : "Booking Error";
+  let message = err.message ? err.message : err;
+  return errorUtil.errorRes(res, code, title, message);
 }

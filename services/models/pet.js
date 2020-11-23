@@ -39,8 +39,11 @@ const petSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
   owner: { type: Schema.Types.ObjectId, ref: "Owner" },
   location: {
-    type: { type: String },
-    coordinates: [],
+    type: { type: String, required: true },
+    coordinates: {
+      type: [Number],
+      required: true,
+    },
   },
   bookings: [{ type: Schema.Types.ObjectId, ref: "Booking" }],
   status: {
