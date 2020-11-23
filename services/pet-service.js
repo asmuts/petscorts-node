@@ -120,15 +120,15 @@ exports.addPet = async function (petData) {
 
 exports.addImageToPet = async function (petId, imageUrl) {
   try {
-    const pet = await Pet.findById(petId);
-    if (!pet) throw new Error("Couldn't find pet for id " + petId);
-
-    pet.images.push({ url: imageUrl });
-    winston.info(`PetService. Adding image to pet ${petId}`);
-    await pet.save();
+    winston.info(`PetService. Adding image ${imageUrl} to pet ${petId}`);
+    const pet = await Pet.findByIdAndUpdate(
+      petId,
+      { $push: { images: { url: imageUrl } } },
+      { new: true }
+    ).exec();
     return { pet };
   } catch (err) {
-    winston.log("error", err);
+    winston.log("error", "addImageToPet " + err);
     return { err: err.message };
   }
 };
