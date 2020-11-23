@@ -5,8 +5,8 @@ const errorUtil = require("./util/error-util");
 
 const singleUpload = upload.single("image");
 
-exports.upload = function (req, res) {
-  singleUpload(req, res, (err) => {
+exports.upload = async function (req, res) {
+  await singleUpload(req, res, async (err) => {
     if (err) {
       console.log(err);
       return errorUtil.errorRes(res, 400, "Image Upload Error", err.message);
@@ -20,8 +20,16 @@ exports.upload = function (req, res) {
     }
     const imageUrl = req.file.location;
     const petId = req.body.petId;
-    petService.addImageToPet(petId, imageUrl);
     winston.info(`Uploaded image ${imageUrl} for pet ${petId}`);
+
+    const { pet, err: errPetUpdate } = await petService.addImageToPet(
+      petId,
+      imageUrl
+    );
+    if (errPetUpdate) {
+      winston.info(`Failed to update pet record ${errPetUpdate}`);
+      // TODO should return an error
+    }
 
     return res.json({ imageUrl: imageUrl });
   });
