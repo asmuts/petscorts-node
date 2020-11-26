@@ -9,7 +9,7 @@ let title = "Server Error";
 // https://github.com/davidbanham/express-async-errors
 module.exports = function (err, req, res, next) {
   winston.log("error", "ErrorMW: " + err.message);
-  winston.log(err);
+  winston.info(err);
 
   if (err.name === "UnauthorizedError") {
     code = 401;
