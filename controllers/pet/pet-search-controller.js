@@ -80,7 +80,10 @@ exports.getPetsInCityAndNearby = async function (req, res) {
   };
   const pets = _.unionWith(petsComb, comparator);
 
-  winston.info(`PetSearchController.  Found ${pets.length} unique pets`);
+  winston.log(
+    "debug",
+    `PetSearchController.  Found ${pets.length} unique pets`
+  );
   res.json(pets);
 };
 

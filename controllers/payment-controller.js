@@ -48,7 +48,7 @@ exports.declinePayment = async function (req, res) {
   if (!payment) return returnOtherError(res, 404, "No payment record found.");
   if (errPLookup)
     return errorUtil.errorRes(res, 422, "Payment error", errPLookup);
-  winston.info(payment);
+  winsto.log("debug", payment);
 
   // TODO seems like a good candidate for middleware!
   winston.info("PaymentController. DP: validate owner");

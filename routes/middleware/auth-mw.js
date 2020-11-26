@@ -11,6 +11,7 @@ module.exports = jwt({
     jwksUri: `https://${config.get("AUTH0_DOMAIN")}/.well-known/jwks.json`,
   }),
 
+  // be careful not to include trailing slashes in config files for the domain
   audience: config.get("AUTH0_API_IDENTIFIER"),
   issuer: `https://${config.get("AUTH0_DOMAIN")}/`,
   algorithms: ["RS256"],

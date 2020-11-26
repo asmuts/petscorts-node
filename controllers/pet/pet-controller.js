@@ -118,7 +118,10 @@ exports.activatePet = async function (req, res) {
 exports.removeImageFromPet = async function (req, res) {
   const petData = getPetDataFromRequest(req);
   const imageId = req.params.imageId;
-  winston.info("PetController. RIFP " + petData.petId + " imageId " + imageId);
+  winston.log(
+    "debug",
+    "PetController. RIFP " + petData.petId + " imageId " + imageId
+  );
   // TODO error handling for params
   const { pet, image: removedImage, err } = await petService.removeImageFromPet(
     petData.petId,

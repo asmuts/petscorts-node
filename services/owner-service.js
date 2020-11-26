@@ -201,7 +201,7 @@ exports.updateOwner = async function (ownerData) {
 
 exports.deleteOwner = async function (ownerId) {
   try {
-    winston.info(`Deleting owner id: ${ownerId}`);
+    winston.log("warn", `Deleting owner id: ${ownerId}`);
     const owner = await Owner.findByIdAndRemove(ownerId);
     return { owner };
   } catch (err) {
