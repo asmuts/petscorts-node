@@ -1,9 +1,9 @@
 {
     "aws_access_key_id": "",
     "aws_secret_access_key": "",
-    "db": "cluster0.agajx.mongodb.net/petscorts-dev",
+    "db": "cluster0.agajx.mongodb.net/petscorts-prod",
     "jwtPrivateKey": "",
     "mongoDBPassword": "",
     "mongoDBUser": "",
-    "AUTH0_DOMAIN": "dev-38d1txst.us.auth0.com"
+    "AUTH0_DOMAIN": "https://petscorts-prod.us.auth0.com/"
 }
