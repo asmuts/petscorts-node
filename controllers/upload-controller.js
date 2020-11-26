@@ -20,7 +20,7 @@ exports.upload = async function (req, res) {
     }
     const imageUrl = req.file.location;
     const petId = req.body.petId;
-    winston.info(`Uploaded image ${imageUrl} for pet ${petId}`);
+    winston.debug("debug", `Uploaded image ${imageUrl} for pet ${petId}`);
 
     const { pet, err: errPetUpdate } = await petService.addImageToPet(
       petId,

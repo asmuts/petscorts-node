@@ -6,11 +6,13 @@ describe("/api/v1/renters", () => {
   beforeAll(() => {
     app = require("../../../index");
   });
-  afterAll(async () => {
+  afterEach(async () => {
     await Renter.remove({});
   });
 
   describe("GET /", () => {
+    jest.setTimeout(10000);
+
     it("should return all renters", async () => {
       await Renter.collection.insertMany([
         { username: "renter1", fullname: "name 1", email: "renter-int1@.com" },
@@ -32,6 +34,8 @@ describe("/api/v1/renters", () => {
   });
 
   describe("GET /:id", () => {
+    jest.setTimeout(10000);
+
     it("should return Renter if valid id is passed", async () => {
       const newRenter = new Renter({
         username: "renter3",

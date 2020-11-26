@@ -4,12 +4,11 @@ const morgan = require("morgan");
 const cors = require("cors");
 
 console.log("Starting up");
+console.log("NODE_ENV = " + process.env.NODE_ENV);
 
 const app = express();
 
-if (app.get("env") === "development" || "dev") {
-  app.use(morgan("tiny"));
-}
+app.use(morgan("combined"));
 
 // TODO make a configrable whitelist
 app.use(cors());

@@ -12,6 +12,7 @@ const citySchema = new Schema({
   lat: { type: Number, required: true },
   lng: { type: Number, required: true },
   population: { type: Number, required: true },
+  city_state_upper: { type: String, required: true, uppercase: true },
 });
 
 //--fields="city.string(),city_upper.string(),state_id.string(),state_name.string(),county_name.string(),

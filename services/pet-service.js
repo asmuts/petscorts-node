@@ -11,7 +11,7 @@ exports.STATUS = {
 // here for testing purposes.
 exports.getAllPets = async function () {
   const pets = await Pet.find().limit(200).exec();
-  winston.info(`PetService. Found ${pets.length} pets.`);
+  winston.log("debug", `PetService. Found ${pets.length} pets.`);
   return pets;
 };
 
@@ -42,7 +42,7 @@ exports.getPetByIdWithOwnerAndBookings = async function (petId) {
       .populate("bookings")
       .populate("owner")
       .exec();
-    winston.info(`PetService. Found pet for ID: ${petId} - ${pet}`);
+    winston.log("debug", `PetService. Found pet for ID: ${petId} - ${pet}`);
     return { pet };
   } catch (err) {
     winston.log("error", err.message);
@@ -87,7 +87,7 @@ exports.getPetsNearLocation = async function (
   })
     .lean()
     .exec();
-  winston.info("PetService. Found " + pets.length + " for location");
+  winston.log("debug", "PetService. Found " + pets.length + " for location");
   return pets;
 };
 
@@ -146,7 +146,10 @@ exports.removeImageFromPet = async function (petId, imageId) {
     // mongoose can do this for me, cool
     pet.images.pull({ _id: imageId });
     await pet.save();
-    winston.info(`PetService. Removed image ${imageId} from pet ${petId}`);
+    winston.log(
+      "debug",
+      `PetService. Removed image ${imageId} from pet ${petId}`
+    );
 
     return { pet, image: found };
   } catch (err) {
@@ -239,7 +242,7 @@ const updatePetStatus = async (petId, newStatus) => {
         useFindAndModify: false,
       }
     ).exec();
-    winston.info("pet = " + pet);
+    winston.log("debug", "pet = " + pet);
     return { pet };
   } catch (err) {
     winston.log("error", err.message);

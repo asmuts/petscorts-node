@@ -47,7 +47,7 @@ exports.getGeoLocationForAddress = async function (street, city, state) {
 
   let res = {};
   try {
-    winston.info("Contacting googleapis for address: " + url);
+    winston.log("trace", "Contacting googleapis for address: " + url);
     res = await axios.get(url, { timeout: 1000 });
   } catch (e) {
     winston.info(e, url);

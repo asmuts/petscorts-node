@@ -52,9 +52,10 @@ exports.getCitiesForPartialName = async function (name) {
     }
   }
 
+  // new column: city_state_upper  includes state to handle input
   if (!cities) {
     cities = await City.find({
-      city_upper: { $regex: `^${name.toUpperCase()}` },
+      city_state_upper: { $regex: `^${name.toUpperCase()}` },
     })
       .sort({
         population: "descending",
