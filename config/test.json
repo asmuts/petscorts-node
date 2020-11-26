@@ -1,4 +1,5 @@
 {
   "useAuthMW": false,
-  "db": "cluster0.agajx.mongodb.net/petscorts-test"
+  "db": "cluster0.agajx.mongodb.net/petscorts-test",
+  "AUTH0_DOMAIN": "dev-38d1txst.us.auth0.com"
 }
