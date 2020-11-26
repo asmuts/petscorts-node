@@ -5,5 +5,5 @@
     "jwtPrivateKey": "",
     "mongoDBPassword": "",
     "mongoDBUser": "",
-    "AUTH0_DOMAIN": "https://petscorts-prod.us.auth0.com/"
+    "AUTH0_DOMAIN": "petscorts-prod.us.auth0.com/"
 }
