@@ -3,7 +3,7 @@ const router = express.Router();
 
 router.get("/", (req, res) => {
   const json = { message: "The API Server is alive!" };
-  res.status(400).send(json);
+  res.status(200).send(json);
 });
 
 module.exports = router;

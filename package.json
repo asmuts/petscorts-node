@@ -7,6 +7,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "jenkins": "jest --maxWorkers 4",
     "coverage": "jest --maxWorkers 4 --coverage",
     "test": "jest --maxWorkers 4 --watchAll",
     "unit": "jest unit/* --watchAll",

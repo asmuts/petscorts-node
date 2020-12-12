@@ -5,8 +5,12 @@ const winston = require("winston");
 
 // TODO revist the logging
 module.exports = function (app) {
+  // AWS is streaming the files to cloudwatch
+  // It includes stout. All we really need in prod
+  // is the console transport.
+
   var rotatingFile = new winston.transports.DailyRotateFile({
-    filename: "application-%DATE%.log",
+    filename: "./var/log/application-%DATE%.log",
     datePattern: "YYYY-MM-DD",
     zippedArchive: true,
     maxSize: "20m",
@@ -22,11 +26,15 @@ module.exports = function (app) {
   winston.configure({
     transports: [rotatingFile, console],
     rejectionHandlers: [
-      new winston.transports.File({ filename: "rejections.log" }),
+      new winston.transports.File({
+        filename: "./var/log/rejections.log",
+      }),
       console,
     ],
     exceptionHandlers: [
-      new winston.transports.File({ filename: "uncaughtExceptions.log" }),
+      new winston.transports.File({
+        filename: "./var/log/uncaughtExceptions.log",
+      }),
       console,
     ],
     exitOnError: false,
