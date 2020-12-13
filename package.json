@@ -9,12 +9,12 @@
   "scripts": {
     "jenkins": "jest --maxWorkers 1",
     "jenkins_unit": "jest unit/* --maxWorkers 1",
-    "jenkins_services": "jest services/* --maxWorkers 1",
+    "jenkins_services": "jest integration/services/* --maxWorkers 1",
     "coverage": "jest --maxWorkers 4 --coverage",
     "test": "jest --maxWorkers 4 --watchAll",
     "unit": "jest unit/* --watchAll",
     "integration": "jest integration/* --maxWorkers 4 --detectOpenHandles",
-    "services": "jest services/* --maxWorkers 4 --detectOpenHandles --watchAll",
+    "services": "jest integration/services/* --maxWorkers 4 --detectOpenHandles --watchAll",
     "start": "node server.js"
   },
   "keywords": [],
