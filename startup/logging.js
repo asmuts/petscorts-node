@@ -4,7 +4,7 @@ require("winston-daily-rotate-file");
 const winston = require("winston");
 
 // TODO revist the logging
-module.exports = function (app) {
+module.exports = function () {
   // AWS is streaming the files to cloudwatch
   // It includes stout. All we really need in prod
   // is the console transport.

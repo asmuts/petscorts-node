@@ -14,7 +14,7 @@ app.use(morgan("combined"));
 app.use(cors());
 app.use(express.json());
 
-require("./startup/logging")(app);
+require("./startup/logging")();
 require("./startup/mongo")(app);
 require("./startup/routes")(app);
 require("./startup/validation")();

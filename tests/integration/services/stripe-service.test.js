@@ -1,5 +1,5 @@
-const express = require("express");
 const stripeService = require("../../../services/stripe-service");
+require("../../../startup/logging")();
 
 // Stripe testing data
 // https://stripe.com/docs/testing
@@ -9,11 +9,10 @@ const stripeService = require("../../../services/stripe-service");
 
 describe("/stripe-service", () => {
   beforeAll(async () => {
-    app = require("../../../index");
+    //
   });
   afterAll(async () => {
-    const app = express();
-    app.close();
+    //
   });
 
   //    { err: 'Invalid string: {:err=>"tokenId is not defined"}' }
