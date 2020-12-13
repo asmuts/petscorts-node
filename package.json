@@ -9,6 +9,7 @@
   "scripts": {
     "jenkins": "jest --maxWorkers 1",
     "jenkins_unit": "jest unit/* --maxWorkers 1",
+    "jenkins_services": "jest services/* --maxWorkers 1",
     "coverage": "jest --maxWorkers 4 --coverage",
     "test": "jest --maxWorkers 4 --watchAll",
     "unit": "jest unit/* --watchAll",
